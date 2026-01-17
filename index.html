@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>픽셀 슈터: 연사 제한 버전</title>
+    <style>
+        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; }
+        canvas { background: #000; border: 4px solid #666; image-rendering: pixelated; box-shadow: 0 0 30px rgba(0,255,255,0.1); }
+        #ui { position: absolute; top: 10px; font-size: 24px; font-weight: bold; font-family: 'Courier New', monospace; z-index: 10; text-shadow: 2px 2px 0 #000; }
+        
+        #start-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; 
+        }
+        h1 { font-family: 'Courier New'; font-size: 40px; margin-bottom: 30px; text-shadow: 4px 4px 0 #00e5ff; }
+        button {
+            padding: 15px 40px; font-size: 24px; cursor: pointer; 
+            background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold;
+            box-shadow: 0 0 15px #00e5ff; transition: 0.2s;
+        }
+        button:hover { background: white; transform: scale(1.1); }
+        #status-msg { margin-top: 20px; color: yellow; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="ui">SCORE: <span id="score">0</span></div>
+    
+    <div id="start-screen">
+        <h1>PIXEL SHOOTER</h1>
+        <button id="startBtn">GAME START</button>
+        <p style="margin-top: 15px; color: #aaa;">✨ 연사 속도 조절 & 관통 방지 완벽 적용</p>
+        <p id="status-msg">시스템 로딩중...</p>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const startScreen = document.getElementById('start-screen');
+            const statusMsg = document.getElementById('status-msg');
+
+            statusMsg.innerText = "● 시스템 준비 완료 (이제 겹쳐서 나가지 않습니다)";
+            statusMsg.style.color = "#00ff00";
+
+            startBtn.onclick = function() {
+                startScreen.style.display = 'none';
+                initAudio();
+                gameLoop();
+            };
+
+            // === 오디오 시스템 ===
+            let audioCtx;
+            function initAudio() {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+
+            function playSound(type) {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'shoot') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'explosion') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(10, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'powerup') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            }
+
+            // === 픽셀 및 변수 ===
+            const playerSprite = [[0,0,0,1,0,0,0], [0,0,1,1,1,0,0], [0,1,1,0,1,1,0], [1,1,1,1,1,1,1], [1,0,1,1,1,0,1], [1,0,0,1,0,0,1]];
+            const enemySprite = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
+            const itemSprite = [[1,1,1,1,1], [1,0,0,0,1], [1,1,1,1,0], [1,0,0,0,0], [1,0,0,0,0]];
+
+            function drawPixelSprite(sprite, x, y, color, pixelSize) {
+                ctx.fillStyle = color;
+                for(let r=0; r<sprite.length; r++) {
+                    for(let c=0; c<sprite[r].length; c++) {
+                        if(sprite[r][c] === 1) ctx.fillRect(x + c*pixelSize, y + r*pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            }
+
+            let score = 0;
+            const pixelSize = 5;
+            const player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1 };
+            
+            let bullets = [];
+            let enemies = [];
+            let items = [];
+            let stars = [];
+            let particles = [];
+            let keys = {};
+
+            // ★ 연사 속도 제한 변수 (중요!)
+            let lastShotTime = 0;
+            const SHOT_DELAY = 150; // 0.15초마다 발사 가능 (숫자를 키우면 더 느리게 나감)
+
+            for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
+
+            window.addEventListener('keydown', (e) => keys[e.code] = true);
+            window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+            function createExplosion(x, y, color) {
+                for(let i=0; i<15; i++) {
+                    particles.push({
+                        x: x, y: y,
+                        dx: (Math.random() - 0.5) * 8,
+                        dy: (Math.random() - 0.5) * 8,
+                        size: Math.random() * 4 + 2,
+                        life: 1.0, color: color
+                    });
+                }
+            }
+
+            function gameLoop() {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+
+            function update() {
+                // 1. 별과 파티클 이동
+                stars.forEach(star => {
+                    star.y += star.speed;
+                    if (star.y > canvas.height) { star.y = 0; star.x = Math.random()*canvas.width; }
+                });
+
+                particles = particles.filter(p => {
+                    p.x += p.dx; p.y += p.dy; p.life -= 0.04;
+                    return p.life > 0;
+                });
+
+                // 2. 플레이어 이동
+                if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+                if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+                if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+                if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
+
+                // 3. 총알 발사 (★ 연사 제한 적용)
+                if (keys['Space']) {
+                    const currentTime = Date.now();
+                    // 마지막 발사 시간과 비교해서 일정 시간이 지났는지 확인
+                    if (currentTime - lastShotTime > SHOT_DELAY) {
+                        
+                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
+                        if (player.powerLevel >= 2) {
+                            bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -4, isDead: false });
+                            bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 4, isDead: false });
+                        }
+                        playSound('shoot');
+                        lastShotTime = currentTime; // 발사 시간 기록
+                    }
+                }
+
+                // 4. 아이템 이동 및 획득
+                items.forEach(item => {
+                    item.y += 2;
+                    if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x &&
+                        player.y < item.y + item.height && player.y + player.height > item.y) {
+                        item.isDead = true;
+                        player.powerLevel = 2;
+                        score += 500;
+                        document.getElementById('score').innerText = score;
+                        playSound('powerup');
+                    }
+                    if (item.y > canvas.height) item.isDead = true;
+                });
+                items = items.filter(item => !item.isDead);
+
+                // 5. 적 생성 및 이동
+                if (Math.random() < 0.03) {
+                    enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
+                }
+                enemies.forEach(e => {
+                    e.y += 3;
+                    if (e.y > canvas.height) e.isDead = true;
+                });
+
+                // 6. 총알 이동
+                bullets.forEach(b => {
+                    b.y -= 8; b.x += (b.dx || 0);
+                    if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true;
+                });
+
+                // ★★★ 7. 충돌 검사 (완벽 분리 + 브레이크) ★★★
+                for (let i = 0; i < bullets.length; i++) {
+                    let b = bullets[i];
+                    if (b.isDead) continue; // 이미 죽은 총알은 패스
+
+                    for (let j = 0; j < enemies.length; j++) {
+                        let e = enemies[j];
+                        if (e.isDead) continue; // 이미 죽은 적은 패스
+
+                        // 충돌 체크
+                        if (b.x < e.x + e.width && b.x + b.width > e.x &&
+                            b.y < e.y + e.height && b.y + b.height > e.y) {
+                            
+                            // 충돌 발생!
+                            b.isDead = true; // 총알 사망
+                            e.isDead = true; // 적 사망
+
+                            // 효과
+                            createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
+                            if (Math.random() < 0.1) items.push({ x: e.x, y: e.y, width: 25, height: 25, isDead: false });
+                            
+                            score += 100;
+                            document.getElementById('score').innerText = score;
+                            playSound('explosion');
+
+                            // ★ 중요: 총알이 죽었으니 더 이상 다른 적을 검사하지 않음
+                            break; 
+                        }
+                    }
+                }
+
+                // 8. 죽은 객체 청소
+                bullets = bullets.filter(b => !b.isDead);
+                enemies = enemies.filter(e => !e.isDead);
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                stars.forEach(star => ctx.fillRect(star.x, star.y, star.size, star.size));
+                
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                ctx.globalAlpha = 1.0;
+
+                items.forEach(item => drawPixelSprite(itemSprite, item.x, item.y, '#ffff00', 5));
+                drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
+                enemies.forEach(e => drawPixelSprite(enemySprite, e.x, e.y, '#ff5252', pixelSize));
+                ctx.fillStyle = '#ffeb3b';
+                bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+            }
+            
+            draw();
+        };
+    </script>
+</body>
+</html>
