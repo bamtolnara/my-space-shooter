@@ -2,39 +2,80 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>픽셀 슈터: 연사 제한 버전</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>픽셀 슈터: 모바일 지원</title>
     <style>
-        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; }
-        canvas { background: #000; border: 4px solid #666; image-rendering: pixelated; box-shadow: 0 0 30px rgba(0,255,255,0.1); }
-        #ui { position: absolute; top: 10px; font-size: 24px; font-weight: bold; font-family: 'Courier New', monospace; z-index: 10; text-shadow: 2px 2px 0 #000; }
+        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; touch-action: none; /* 스크롤 방지 */ }
         
+        /* 캔버스: 모바일 화면에 맞게 자동 조절 */
+        canvas { 
+            background: #000; 
+            border: 2px solid #444; 
+            image-rendering: pixelated; 
+            box-shadow: 0 0 20px rgba(0,255,255,0.1);
+            max-width: 100%;
+            max-height: 80vh; /* 화면 높이의 80%만 차지 */
+        }
+
+        #ui { position: absolute; top: 10px; font-size: 20px; font-weight: bold; font-family: 'Courier New', monospace; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+        
+        /* 시작 화면 */
         #start-screen { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; 
         }
-        h1 { font-family: 'Courier New'; font-size: 40px; margin-bottom: 30px; text-shadow: 4px 4px 0 #00e5ff; }
+        h1 { font-family: 'Courier New'; font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
+        
         button {
-            padding: 15px 40px; font-size: 24px; cursor: pointer; 
+            padding: 15px 30px; font-size: 20px; cursor: pointer; 
             background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold;
-            box-shadow: 0 0 15px #00e5ff; transition: 0.2s;
+            box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px;
         }
-        button:hover { background: white; transform: scale(1.1); }
-        #status-msg { margin-top: 20px; color: yellow; font-size: 14px; }
+        button:active { transform: scale(0.95); background: white; }
+        
+        #status-msg { margin-top: 20px; color: yellow; font-size: 14px; text-align: center; }
+
+        /* === 📱 모바일 전용 발사 버튼 === */
+        #fireBtnMobile {
+            display: none; /* PC에선 숨김 */
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.5);
+            border: 4px solid #ff5252;
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 50;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        #fireBtnMobile:active { background: rgba(255, 0, 0, 0.8); transform: scale(0.95); }
+
+        /* 모바일 환경일 때만 버튼 보이기 */
+        @media (hover: none) and (pointer: coarse) {
+            #fireBtnMobile { display: flex; justify-content: center; align-items: center; }
+        }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
     
     <div id="start-screen">
-        <h1>PIXEL SHOOTER</h1>
+        <h1>PIXEL SHOOTER<br><span style="font-size:16px">MOBILE EDITION</span></h1>
         <button id="startBtn">GAME START</button>
-        <p style="margin-top: 15px; color: #aaa;">✨ 연사 속도 조절 & 관통 방지 완벽 적용</p>
+        <p style="margin-top: 15px; color: #aaa;">💻 방향키 + 스페이스바<br>📱 터치 드래그 + 빨간 버튼</p>
         <p id="status-msg">시스템 로딩중...</p>
     </div>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
+    
+    <div id="fireBtnMobile">FIRE</div>
 
     <script>
         window.onload = function() {
@@ -43,8 +84,9 @@
             const startBtn = document.getElementById('startBtn');
             const startScreen = document.getElementById('start-screen');
             const statusMsg = document.getElementById('status-msg');
+            const fireBtnMobile = document.getElementById('fireBtnMobile');
 
-            statusMsg.innerText = "● 시스템 준비 완료 (이제 겹쳐서 나가지 않습니다)";
+            statusMsg.innerText = "● 준비 완료 (터치 지원)";
             statusMsg.style.color = "#00ff00";
 
             startBtn.onclick = function() {
@@ -119,15 +161,45 @@
             let stars = [];
             let particles = [];
             let keys = {};
-
-            // ★ 연사 속도 제한 변수 (중요!)
             let lastShotTime = 0;
-            const SHOT_DELAY = 150; // 0.15초마다 발사 가능 (숫자를 키우면 더 느리게 나감)
+            const SHOT_DELAY = 150; 
 
             for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
 
+            // === 🎮 컨트롤러 (키보드 & 터치) ===
+            
+            // 1. 키보드
             window.addEventListener('keydown', (e) => keys[e.code] = true);
             window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+            // 2. 모바일 터치 이동
+            // 화면 어디든 터치하고 끌면 비행기가 그 위치로 따라옵니다.
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // 스크롤 방지
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                
+                // 터치 좌표를 캔버스 좌표로 변환
+                const scaleX = canvas.width / rect.width; 
+                const scaleY = canvas.height / rect.height;
+                
+                let touchX = (touch.clientX - rect.left) * scaleX;
+                let touchY = (touch.clientY - rect.top) * scaleY;
+
+                // 플레이어 이동 (손가락 중심)
+                player.x = touchX - player.width / 2;
+                player.y = touchY - player.height / 2;
+            }, { passive: false });
+
+            // 3. 모바일 발사 버튼
+            fireBtnMobile.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys['Space'] = true; // 스페이스바 누른 것처럼 인식
+            });
+            fireBtnMobile.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys['Space'] = false;
+            });
 
             function createExplosion(x, y, color) {
                 for(let i=0; i<15; i++) {
@@ -148,7 +220,6 @@
             }
 
             function update() {
-                // 1. 별과 파티클 이동
                 stars.forEach(star => {
                     star.y += star.speed;
                     if (star.y > canvas.height) { star.y = 0; star.x = Math.random()*canvas.width; }
@@ -159,29 +230,26 @@
                     return p.life > 0;
                 });
 
-                // 2. 플레이어 이동
+                // PC용 키보드 이동
                 if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
                 if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
                 if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
                 if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
 
-                // 3. 총알 발사 (★ 연사 제한 적용)
+                // 총알 발사 (연사 제한)
                 if (keys['Space']) {
                     const currentTime = Date.now();
-                    // 마지막 발사 시간과 비교해서 일정 시간이 지났는지 확인
                     if (currentTime - lastShotTime > SHOT_DELAY) {
-                        
                         bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
                         if (player.powerLevel >= 2) {
                             bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -4, isDead: false });
                             bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 4, isDead: false });
                         }
                         playSound('shoot');
-                        lastShotTime = currentTime; // 발사 시간 기록
+                        lastShotTime = currentTime;
                     }
                 }
 
-                // 4. 아이템 이동 및 획득
                 items.forEach(item => {
                     item.y += 2;
                     if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x &&
@@ -196,7 +264,6 @@
                 });
                 items = items.filter(item => !item.isDead);
 
-                // 5. 적 생성 및 이동
                 if (Math.random() < 0.03) {
                     enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
                 }
@@ -205,30 +272,26 @@
                     if (e.y > canvas.height) e.isDead = true;
                 });
 
-                // 6. 총알 이동
                 bullets.forEach(b => {
                     b.y -= 8; b.x += (b.dx || 0);
                     if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true;
                 });
 
-                // ★★★ 7. 충돌 검사 (완벽 분리 + 브레이크) ★★★
+                // 충돌 검사
                 for (let i = 0; i < bullets.length; i++) {
                     let b = bullets[i];
-                    if (b.isDead) continue; // 이미 죽은 총알은 패스
+                    if (b.isDead) continue; 
 
                     for (let j = 0; j < enemies.length; j++) {
                         let e = enemies[j];
-                        if (e.isDead) continue; // 이미 죽은 적은 패스
+                        if (e.isDead) continue; 
 
-                        // 충돌 체크
                         if (b.x < e.x + e.width && b.x + b.width > e.x &&
                             b.y < e.y + e.height && b.y + b.height > e.y) {
                             
-                            // 충돌 발생!
-                            b.isDead = true; // 총알 사망
-                            e.isDead = true; // 적 사망
+                            b.isDead = true; 
+                            e.isDead = true; 
 
-                            // 효과
                             createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
                             if (Math.random() < 0.1) items.push({ x: e.x, y: e.y, width: 25, height: 25, isDead: false });
                             
@@ -236,13 +299,11 @@
                             document.getElementById('score').innerText = score;
                             playSound('explosion');
 
-                            // ★ 중요: 총알이 죽었으니 더 이상 다른 적을 검사하지 않음
                             break; 
                         }
                     }
                 }
 
-                // 8. 죽은 객체 청소
                 bullets = bullets.filter(b => !b.isDead);
                 enemies = enemies.filter(e => !e.isDead);
             }
