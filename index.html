@@ -3,103 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 모바일 지원</title>
+    <title>픽셀 슈터: 온라인 랭킹전</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
-        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; touch-action: none; /* 스크롤 방지 */ }
-        
-        /* 캔버스: 모바일 화면에 맞게 자동 조절 */
-        canvas { 
-            background: #000; 
-            border: 2px solid #444; 
-            image-rendering: pixelated; 
-            box-shadow: 0 0 20px rgba(0,255,255,0.1);
-            max-width: 100%;
-            max-height: 80vh; /* 화면 높이의 80%만 차지 */
-        }
-
-        #ui { position: absolute; top: 10px; font-size: 20px; font-weight: bold; font-family: 'Courier New', monospace; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
-        
-        /* 시작 화면 */
-        #start-screen { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 100; 
-        }
-        h1 { font-family: 'Courier New'; font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
-        
-        button {
-            padding: 15px 30px; font-size: 20px; cursor: pointer; 
-            background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold;
-            box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px;
-        }
+        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; touch-action: none; font-family: 'Courier New', monospace; }
+        canvas { background: #000; border: 2px solid #444; image-rendering: pixelated; box-shadow: 0 0 20px rgba(0,255,255,0.1); max-width: 100%; max-height: 80vh; }
+        #ui { position: absolute; top: 10px; font-size: 20px; font-weight: bold; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        #game-over-screen { display: none; } 
+        h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
+        h2 { font-size: 40px; color: #ff5252; margin-bottom: 10px; text-shadow: 3px 3px 0 #fff; }
+        input { padding: 10px; font-size: 18px; text-align: center; background: #222; border: 2px solid #00e5ff; color: white; font-family: 'Courier New', monospace; margin-bottom: 15px; width: 200px; }
+        button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold; box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px; margin-top: 10px; }
         button:active { transform: scale(0.95); background: white; }
-        
-        #status-msg { margin-top: 20px; color: yellow; font-size: 14px; text-align: center; }
-
-        /* === 📱 모바일 전용 발사 버튼 === */
-        #fireBtnMobile {
-            display: none; /* PC에선 숨김 */
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 0, 0, 0.5);
-            border: 4px solid #ff5252;
-            border-radius: 50%;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 50;
-            user-select: none;
-            touch-action: manipulation;
-        }
-        #fireBtnMobile:active { background: rgba(255, 0, 0, 0.8); transform: scale(0.95); }
-
-        /* 모바일 환경일 때만 버튼 보이기 */
-        @media (hover: none) and (pointer: coarse) {
-            #fireBtnMobile { display: flex; justify-content: center; align-items: center; }
-        }
+        #ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 10px; text-align: left; height: 200px; overflow-y: auto; }
+        .rank-item { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .rank-1 { color: #ffd700; font-weight: bold; } 
+        .rank-2 { color: #c0c0c0; } 
+        .rank-3 { color: #cd7f32; }
+        #fireBtnMobile { display: none; position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(255, 0, 0, 0.5); border: 4px solid #ff5252; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 50; user-select: none; touch-action: manipulation; justify-content: center; align-items: center; }
+        @media (hover: none) and (pointer: coarse) { #fireBtnMobile { display: flex; } }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
     
-    <div id="start-screen">
-        <h1>PIXEL SHOOTER<br><span style="font-size:16px">MOBILE EDITION</span></h1>
+    <div id="start-screen" class="screen">
+        <h1>PIXEL SHOOTER<br><span style="font-size:14px; color:#aaa;">ONLINE RANKING</span></h1>
+        <input type="text" id="username" placeholder="닉네임 (최대 6글자)" maxlength="6">
         <button id="startBtn">GAME START</button>
-        <p style="margin-top: 15px; color: #aaa;">💻 방향키 + 스페이스바<br>📱 터치 드래그 + 빨간 버튼</p>
-        <p id="status-msg">시스템 로딩중...</p>
+        <p style="margin-top: 15px; color: #aaa;">진짜 온라인 랭킹에 도전하세요!</p>
+    </div>
+
+    <div id="game-over-screen" class="screen">
+        <h2>GAME OVER</h2>
+        <div id="final-score">SCORE: 0</div>
+        <div id="ranking-box">
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 ONLINE RANKING 🏆</div>
+            <div id="ranking-list" style="text-align:center; color:#666;">로딩중...</div>
+        </div>
+        <button id="restartBtn">RETRY</button>
     </div>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
-    
     <div id="fireBtnMobile">FIRE</div>
 
     <script>
+        // =========================================================
+        // 🔥 [1] 여기에 아까 복사한 파이어베이스 코드를 붙여넣으세요! 🔥
+        // const firebaseConfig = { ... } 이 부분 전체를 아래에 덮어쓰세요.
+        // =========================================================
+        
+        const firebaseConfig = {
+  apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE",
+  authDomain: "pixel-shooter-1e9b9.firebaseapp.com",
+  databaseURL: "https://pixel-shooter-1e9b9-default-rtdb.firebaseio.com",
+  projectId: "pixel-shooter-1e9b9",
+  storageBucket: "pixel-shooter-1e9b9.firebasestorage.app",
+  messagingSenderId: "1043130908247",
+  appId: "1:1043130908247:web:0688292b8d8bbacd656d12"
+};
+
+        
+        // =========================================================
+
+        // 파이어베이스 초기화 (설정이 올바르면 실행됨)
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            console.log("파이어베이스 연결 성공!");
+        } catch (e) {
+            console.error("파이어베이스 설정이 필요합니다.", e);
+            document.getElementById('ranking-list').innerText = "DB 연결 실패\n(코드를 확인하세요)";
+        }
+
+        // === 온라인 랭킹 저장 및 불러오기 함수 ===
+        function saveScoreToOnline(name, score) {
+            if (!db) return;
+            // 'scores'라는 방에 데이터 밀어넣기 (push)
+            db.ref('scores').push({
+                username: name,
+                score: score,
+                timestamp: Date.now()
+            });
+        }
+
+        function loadOnlineRanking() {
+            if (!db) return;
+            const list = document.getElementById('ranking-list');
+            list.innerHTML = "랭킹 불러오는 중...";
+
+            // 점수 순으로 정렬해서 가져오기
+            db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    list.innerHTML = "등록된 랭킹이 없습니다.";
+                    return;
+                }
+
+                // 데이터를 배열로 변환하고 뒤집기 (높은 점수가 위로 오게)
+                let rankingArr = [];
+                for (let key in data) {
+                    rankingArr.push(data[key]);
+                }
+                rankingArr.sort((a, b) => b.score - a.score); // 내림차순 정렬
+
+                // 화면에 그리기
+                list.innerHTML = "";
+                rankingArr.forEach((rank, index) => {
+                    let colorClass = "";
+                    if (index === 0) colorClass = "rank-1";
+                    else if (index === 1) colorClass = "rank-2";
+                    else if (index === 2) colorClass = "rank-3";
+
+                    list.innerHTML += `
+                        <div class="rank-item ${colorClass}">
+                            <span>${index + 1}. ${rank.username}</span>
+                            <span>${rank.score}</span>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // =========================================================
+        // [게임 로직] (기존과 동일)
+        // =========================================================
+        
         window.onload = function() {
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-            const startBtn = document.getElementById('startBtn');
             const startScreen = document.getElementById('start-screen');
-            const statusMsg = document.getElementById('status-msg');
-            const fireBtnMobile = document.getElementById('fireBtnMobile');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const startBtn = document.getElementById('startBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const usernameInput = document.getElementById('username');
+            const finalScoreEl = document.getElementById('final-score');
+            const uiScore = document.getElementById('score');
 
-            statusMsg.innerText = "● 준비 완료 (터치 지원)";
-            statusMsg.style.color = "#00ff00";
+            let isGameRunning = false;
+            let currentUsername = "Unknown"; 
 
             startBtn.onclick = function() {
+                const name = usernameInput.value.trim();
+                if (name === "") { alert("닉네임을 입력해주세요!"); return; }
+                currentUsername = name;
                 startScreen.style.display = 'none';
                 initAudio();
-                gameLoop();
+                startGame();
             };
 
-            // === 오디오 시스템 ===
+            restartBtn.onclick = function() {
+                gameOverScreen.style.display = 'none';
+                startGame();
+            };
+
             let audioCtx;
             function initAudio() {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
             }
 
             function playSound(type) {
@@ -111,33 +180,16 @@
                 const now = audioCtx.currentTime;
 
                 if (type === 'shoot') {
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-                    gain.gain.setValueAtTime(0.05, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-                    osc.start(now);
-                    osc.stop(now + 0.1);
+                    osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1);
                 } else if (type === 'explosion') {
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(100, now);
-                    osc.frequency.exponentialRampToValueAtTime(10, now + 0.3);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                    osc.start(now);
-                    osc.stop(now + 0.3);
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
                 } else if (type === 'powerup') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                    osc.start(now);
-                    osc.stop(now + 0.3);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'gameover') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(10, now + 1.0); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.001, now + 1.0); osc.start(now); osc.stop(now + 1.0);
                 }
             }
 
-            // === 픽셀 및 변수 ===
             const playerSprite = [[0,0,0,1,0,0,0], [0,0,1,1,1,0,0], [0,1,1,0,1,1,0], [1,1,1,1,1,1,1], [1,0,1,1,1,0,1], [1,0,0,1,0,0,1]];
             const enemySprite = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
             const itemSprite = [[1,1,1,1,1], [1,0,0,0,1], [1,1,1,1,0], [1,0,0,0,0], [1,0,0,0,0]];
@@ -151,72 +203,65 @@
                 }
             }
 
-            let score = 0;
-            const pixelSize = 5;
-            const player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1 };
-            
-            let bullets = [];
-            let enemies = [];
-            let items = [];
-            let stars = [];
-            let particles = [];
-            let keys = {};
-            let lastShotTime = 0;
-            const SHOT_DELAY = 150; 
+            let score = 0; const pixelSize = 5;
+            let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1 };
+            let bullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
+            let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
 
             for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
 
-            // === 🎮 컨트롤러 (키보드 & 터치) ===
-            
-            // 1. 키보드
             window.addEventListener('keydown', (e) => keys[e.code] = true);
             window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-            // 2. 모바일 터치 이동
-            // 화면 어디든 터치하고 끌면 비행기가 그 위치로 따라옵니다.
             canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault(); // 스크롤 방지
+                if(!isGameRunning) return;
+                e.preventDefault();
                 const touch = e.touches[0];
                 const rect = canvas.getBoundingClientRect();
-                
-                // 터치 좌표를 캔버스 좌표로 변환
                 const scaleX = canvas.width / rect.width; 
                 const scaleY = canvas.height / rect.height;
-                
-                let touchX = (touch.clientX - rect.left) * scaleX;
-                let touchY = (touch.clientY - rect.top) * scaleY;
-
-                // 플레이어 이동 (손가락 중심)
-                player.x = touchX - player.width / 2;
-                player.y = touchY - player.height / 2;
+                player.x = (touch.clientX - rect.left) * scaleX - player.width / 2;
+                player.y = (touch.clientY - rect.top) * scaleY - player.height / 2;
             }, { passive: false });
 
-            // 3. 모바일 발사 버튼
-            fireBtnMobile.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['Space'] = true; // 스페이스바 누른 것처럼 인식
-            });
-            fireBtnMobile.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['Space'] = false;
-            });
+            const fireBtnMobile = document.getElementById('fireBtnMobile');
+            fireBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; });
+            fireBtnMobile.addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; });
 
             function createExplosion(x, y, color) {
                 for(let i=0; i<15; i++) {
-                    particles.push({
-                        x: x, y: y,
-                        dx: (Math.random() - 0.5) * 8,
-                        dy: (Math.random() - 0.5) * 8,
-                        size: Math.random() * 4 + 2,
-                        life: 1.0, color: color
-                    });
+                    particles.push({ x: x, y: y, dx: (Math.random() - 0.5) * 8, dy: (Math.random() - 0.5) * 8, size: Math.random() * 4 + 2, life: 1.0, color: color });
                 }
             }
 
+            function startGame() {
+                score = 0; uiScore.innerText = score;
+                player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: 5, powerLevel: 1 };
+                bullets = []; enemies = []; items = []; particles = []; keys = {};
+                isGameRunning = true;
+                gameLoop();
+            }
+
+            function triggerGameOver() {
+                isGameRunning = false;
+                createExplosion(player.x + player.width/2, player.y + player.height/2, '#00e5ff');
+                playSound('gameover');
+                
+                // 게임 오버 시 온라인 DB에 저장
+                saveScoreToOnline(currentUsername, score);
+
+                setTimeout(() => {
+                    cancelAnimationFrame(animationId);
+                    finalScoreEl.innerText = "SCORE: " + score;
+                    gameOverScreen.style.display = 'flex';
+                    
+                    // 랭킹 불러오기
+                    loadOnlineRanking();
+                }, 1000);
+            }
+
             function gameLoop() {
-                update();
-                draw();
-                requestAnimationFrame(gameLoop);
+                update(); draw(); animationId = requestAnimationFrame(gameLoop);
             }
 
             function update() {
@@ -224,19 +269,17 @@
                     star.y += star.speed;
                     if (star.y > canvas.height) { star.y = 0; star.x = Math.random()*canvas.width; }
                 });
-
                 particles = particles.filter(p => {
-                    p.x += p.dx; p.y += p.dy; p.life -= 0.04;
-                    return p.life > 0;
+                    p.x += p.dx; p.y += p.dy; p.life -= 0.04; return p.life > 0;
                 });
 
-                // PC용 키보드 이동
+                if (!isGameRunning) return;
+
                 if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
                 if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
                 if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
                 if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
 
-                // 총알 발사 (연사 제한)
                 if (keys['Space']) {
                     const currentTime = Date.now();
                     if (currentTime - lastShotTime > SHOT_DELAY) {
@@ -245,8 +288,7 @@
                             bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -4, isDead: false });
                             bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 4, isDead: false });
                         }
-                        playSound('shoot');
-                        lastShotTime = currentTime;
+                        playSound('shoot'); lastShotTime = currentTime;
                     }
                 }
 
@@ -254,79 +296,51 @@
                     item.y += 2;
                     if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x &&
                         player.y < item.y + item.height && player.y + player.height > item.y) {
-                        item.isDead = true;
-                        player.powerLevel = 2;
-                        score += 500;
-                        document.getElementById('score').innerText = score;
-                        playSound('powerup');
+                        item.isDead = true; player.powerLevel = 2; score += 500; uiScore.innerText = score; playSound('powerup');
                     }
                     if (item.y > canvas.height) item.isDead = true;
                 });
                 items = items.filter(item => !item.isDead);
 
-                if (Math.random() < 0.03) {
-                    enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
-                }
+                if (Math.random() < 0.03) enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
+                
                 enemies.forEach(e => {
-                    e.y += 3;
-                    if (e.y > canvas.height) e.isDead = true;
+                    e.y += 3; if (e.y > canvas.height) e.isDead = true;
+                    if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x &&
+                        player.y < e.y + e.height && player.y + player.height > e.y) {
+                        triggerGameOver();
+                    }
                 });
 
-                bullets.forEach(b => {
-                    b.y -= 8; b.x += (b.dx || 0);
-                    if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true;
-                });
+                bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
 
-                // 충돌 검사
                 for (let i = 0; i < bullets.length; i++) {
-                    let b = bullets[i];
-                    if (b.isDead) continue; 
-
+                    let b = bullets[i]; if (b.isDead) continue; 
                     for (let j = 0; j < enemies.length; j++) {
-                        let e = enemies[j];
-                        if (e.isDead) continue; 
-
-                        if (b.x < e.x + e.width && b.x + b.width > e.x &&
-                            b.y < e.y + e.height && b.y + b.height > e.y) {
-                            
-                            b.isDead = true; 
-                            e.isDead = true; 
-
+                        let e = enemies[j]; if (e.isDead) continue; 
+                        if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
+                            b.isDead = true; e.isDead = true; 
                             createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
                             if (Math.random() < 0.1) items.push({ x: e.x, y: e.y, width: 25, height: 25, isDead: false });
-                            
-                            score += 100;
-                            document.getElementById('score').innerText = score;
-                            playSound('explosion');
-
+                            score += 100; uiScore.innerText = score; playSound('explosion');
                             break; 
                         }
                     }
                 }
-
                 bullets = bullets.filter(b => !b.isDead);
                 enemies = enemies.filter(e => !e.isDead);
             }
 
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'white';
-                stars.forEach(star => ctx.fillRect(star.x, star.y, star.size, star.size));
-                
-                particles.forEach(p => {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x, p.y, p.size, p.size);
-                });
+                ctx.fillStyle = 'white'; stars.forEach(star => ctx.fillRect(star.x, star.y, star.size, star.size));
+                particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
                 ctx.globalAlpha = 1.0;
-
                 items.forEach(item => drawPixelSprite(itemSprite, item.x, item.y, '#ffff00', 5));
-                drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
+                if (isGameRunning) drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
                 enemies.forEach(e => drawPixelSprite(enemySprite, e.x, e.y, '#ff5252', pixelSize));
-                ctx.fillStyle = '#ffeb3b';
-                bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+                ctx.fillStyle = '#ffeb3b'; bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
             }
-            
             draw();
         };
     </script>
