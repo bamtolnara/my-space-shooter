@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 꼼수 방지 패치</title>
+    <title>픽셀 슈터: 랭킹 확장판</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -16,18 +16,35 @@
         #game-over-screen { display: none; } 
         h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
         h2 { font-size: 40px; color: #ff5252; margin-bottom: 10px; text-shadow: 3px 3px 0 #fff; }
+        
         input { padding: 10px; font-size: 18px; text-align: center; background: #222; border: 2px solid #00e5ff; color: white; font-family: 'Courier New', monospace; margin-bottom: 15px; width: 200px; }
         button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold; box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px; margin-top: 10px; }
         button:active { transform: scale(0.95); background: white; }
-        #ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 10px; text-align: left; height: 200px; overflow-y: auto; }
+        
+        /* 랭킹 박스 공통 스타일 */
+        .ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 15px; text-align: left; }
+        
+        /* 게임 오버 화면 랭킹 (스크롤 가능하게 수정) */
+        #gameover-ranking-box {
+            max-height: 250px; /* 높이 제한 */
+            overflow-y: auto;  /* 내용이 많으면 스크롤 */
+        }
+
         .rank-item { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
         .rank-1 { color: #ffd700; font-weight: bold; } 
         .rank-2 { color: #c0c0c0; } 
         .rank-3 { color: #cd7f32; }
+        
         #fireBtnMobile { display: none; position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(255, 0, 0, 0.5); border: 4px solid #ff5252; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 50; user-select: none; touch-action: manipulation; justify-content: center; align-items: center; }
         @media (hover: none) and (pointer: coarse) { #fireBtnMobile { display: flex; } }
         #warning-msg { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red; animation: blink 0.5s infinite; pointer-events: none; z-index: 50; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        
+        /* 스크롤바 디자인 (크롬/사파리) */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00e5ff; }
     </style>
 </head>
 <body>
@@ -36,6 +53,12 @@
     
     <div id="start-screen" class="screen">
         <h1>PIXEL SHOOTER</h1>
+        
+        <div class="ranking-box">
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 TOP 3 PLAYERS</div>
+            <div id="start-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
+        </div>
+
         <input type="text" id="username" placeholder="닉네임 (최대 6글자)" maxlength="6">
         <button id="startBtn">GAME START</button>
     </div>
@@ -43,10 +66,12 @@
     <div id="game-over-screen" class="screen">
         <h2>GAME OVER</h2>
         <div id="final-score">SCORE: 0</div>
-        <div id="ranking-box">
-            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 ONLINE RANKING 🏆</div>
-            <div id="ranking-list" style="text-align:center; color:#666;">로딩중...</div>
+        
+        <div class="ranking-box" id="gameover-ranking-box">
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 HALL OF FAME (TOP 10)</div>
+            <div id="gameover-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
+        
         <button id="restartBtn">RETRY</button>
     </div>
 
@@ -84,21 +109,46 @@
             db.ref('scores').push({ username: name, score: score });
         }
 
+        // 랭킹 불러오기 (Top 10을 가져와서 화면별로 다르게 뿌림)
         function loadOnlineRanking() {
             if (!db) return;
-            const list = document.getElementById('ranking-list');
-            list.innerHTML = "랭킹 불러오는 중...";
+            
+            const startList = document.getElementById('start-ranking-list');
+            const overList = document.getElementById('gameover-ranking-list');
+            
+            if(startList) startList.innerHTML = "랭킹 로딩중...";
+            if(overList) overList.innerHTML = "랭킹 로딩중...";
+
+            // 1. 점수 기준 정렬, 상위 10개 가져오기
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val();
-                if (!data) { list.innerHTML = "기록 없음"; return; }
+
+                if (!data) {
+                    if(startList) startList.innerHTML = "기록 없음";
+                    if(overList) overList.innerHTML = "기록 없음";
+                    return;
+                }
+
+                // 2. 데이터를 배열로 변환하고 내림차순 정렬
                 let rankingArr = [];
                 for (let key in data) rankingArr.push(data[key]);
                 rankingArr.sort((a, b) => b.score - a.score);
-                list.innerHTML = "";
+
+                // 3. 시작 화면용 HTML 생성 (Top 3)
+                let startHtml = "";
+                rankingArr.slice(0, 3).forEach((rank, index) => {
+                    let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+                    startHtml += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
+                });
+                if(startList) startList.innerHTML = startHtml;
+
+                // 4. 게임 오버 화면용 HTML 생성 (Top 10)
+                let overHtml = "";
                 rankingArr.forEach((rank, index) => {
                     let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-                    list.innerHTML += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
+                    overHtml += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
                 });
+                if(overList) overList.innerHTML = overHtml;
             });
         }
 
@@ -116,6 +166,9 @@
 
             let isGameRunning = false;
             let currentUsername = "Unknown"; 
+
+            // 페이지 열리자마자 랭킹 로딩
+            loadOnlineRanking();
 
             startBtn.onclick = function() {
                 const name = usernameInput.value.trim();
@@ -195,8 +248,17 @@
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width; 
                 const scaleY = canvas.height / rect.height;
-                player.x = (touch.clientX - rect.left) * scaleX - player.width / 2;
-                player.y = (touch.clientY - rect.top) * scaleY - player.height / 2;
+                
+                let nextX = (touch.clientX - rect.left) * scaleX - player.width / 2;
+                let nextY = (touch.clientY - rect.top) * scaleY - player.height / 2;
+
+                if (nextX < 0) nextX = 0;
+                if (nextX > canvas.width - player.width) nextX = canvas.width - player.width;
+                if (nextY < 0) nextY = 0;
+                if (nextY > canvas.height - player.height) nextY = canvas.height - player.height;
+
+                player.x = nextX;
+                player.y = nextY;
             }, { passive: false });
 
             const fireBtnMobile = document.getElementById('fireBtnMobile');
@@ -247,20 +309,16 @@
 
                 if (!isGameRunning) return;
 
-                // 플레이어 이동 로직
                 if (keys['ArrowLeft']) player.x -= player.speed;
                 if (keys['ArrowRight']) player.x += player.speed;
                 if (keys['ArrowUp']) player.y -= player.speed;
                 if (keys['ArrowDown']) player.y += player.speed;
 
-                // ★★★ [꼼수 방지] 투명벽 (Clamp) ★★★
-                // 플레이어가 화면 밖으로 나가려고 하면 강제로 안으로 끌고 옵니다.
                 if (player.x < 0) player.x = 0;
                 if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
                 if (player.y < 0) player.y = 0;
                 if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
 
-                // 총알 발사
                 if (keys['Space']) {
                     const currentTime = Date.now();
                     if (currentTime - lastShotTime > SHOT_DELAY) {
@@ -273,7 +331,6 @@
                     }
                 }
 
-                // 보스 로직
                 if (score >= 2000 && !boss.active && boss.y === -100) {
                     boss.active = true; boss.hp = 50; boss.maxHp = 50; boss.y = -70; boss.x = canvas.width / 2 - boss.width / 2;
                     warningMsg.style.display = 'block'; setTimeout(() => warningMsg.style.display = 'none', 3000);
@@ -292,7 +349,6 @@
                     if (Math.random() < 0.03) enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
                 }
 
-                // 충돌 처리
                 bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
                 for (let i = 0; i < bullets.length; i++) {
                     let b = bullets[i]; if (b.isDead) continue; 
