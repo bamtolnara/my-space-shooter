@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 보스전 업데이트</title>
+    <title>픽셀 슈터: 꼼수 방지 패치</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -26,13 +26,7 @@
         .rank-3 { color: #cd7f32; }
         #fireBtnMobile { display: none; position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(255, 0, 0, 0.5); border: 4px solid #ff5252; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 50; user-select: none; touch-action: manipulation; justify-content: center; align-items: center; }
         @media (hover: none) and (pointer: coarse) { #fireBtnMobile { display: flex; } }
-        
-        /* 보스 경고 메시지 */
-        #warning-msg {
-            display: none; position: absolute; top: 30%; width: 100%; text-align: center;
-            font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red;
-            animation: blink 0.5s infinite; pointer-events: none; z-index: 50;
-        }
+        #warning-msg { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red; animation: blink 0.5s infinite; pointer-events: none; z-index: 50; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -41,7 +35,7 @@
     <div id="warning-msg">⚠ WARNING ⚠<br>BOSS APPROACHING</div>
     
     <div id="start-screen" class="screen">
-        <h1>PIXEL SHOOTER<br><span style="font-size:14px; color:#aaa;">BOSS UPDATE</span></h1>
+        <h1>PIXEL SHOOTER</h1>
         <input type="text" id="username" placeholder="닉네임 (최대 6글자)" maxlength="6">
         <button id="startBtn">GAME START</button>
     </div>
@@ -61,7 +55,7 @@
 
     <script>
         // =========================================================
-        // 🔥 [1] 아까 복사해둔 본인의 파이어베이스 코드로 덮어씌우세요! 🔥
+        // 🔥 [1] 본인의 파이어베이스 코드를 다시 넣어주세요! 🔥
         // =========================================================
         
         const firebaseConfig = {
@@ -158,9 +152,9 @@
                     osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1);
                 } else if (type === 'explosion') {
                     osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
-                } else if (type === 'boss_hit') { // 보스 피격음
+                } else if (type === 'boss_hit') {
                     osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1);
-                } else if (type === 'boss_die') { // 보스 사망음
+                } else if (type === 'boss_die') {
                     osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(50, now + 1.5); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.001, now + 1.5); osc.start(now); osc.stop(now + 1.5);
                 } else if (type === 'powerup') {
                     osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
@@ -171,16 +165,7 @@
 
             const playerSprite = [[0,0,0,1,0,0,0], [0,0,1,1,1,0,0], [0,1,1,0,1,1,0], [1,1,1,1,1,1,1], [1,0,1,1,1,0,1], [1,0,0,1,0,0,1]];
             const enemySprite = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
-            // 👹 보스 스프라이트 (더 큼)
-            const bossSprite = [
-                [0,0,1,1,1,1,1,0,0],
-                [0,1,1,1,1,1,1,1,0],
-                [1,1,0,1,1,1,0,1,1],
-                [1,1,1,1,1,1,1,1,1],
-                [1,0,1,1,1,1,1,0,1],
-                [0,0,1,0,0,0,1,0,0],
-                [0,1,1,0,0,0,1,1,0]
-            ];
+            const bossSprite = [[0,0,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1],[1,0,1,1,1,1,1,0,1],[0,0,1,0,0,0,1,0,0],[0,1,1,0,0,0,1,1,0]];
             const itemSprite = [[1,1,1,1,1], [1,0,0,0,1], [1,1,1,1,0], [1,0,0,0,0], [1,0,0,0,0]];
 
             function drawPixelSprite(sprite, x, y, color, pixelSize) {
@@ -194,9 +179,7 @@
 
             let score = 0; const pixelSize = 5;
             let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1 };
-            // 👹 보스 변수 추가
             let boss = { active: false, x: 0, y: -100, width: 90, height: 70, hp: 0, maxHp: 50, dir: 1, speed: 2 };
-            
             let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
             let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
 
@@ -230,7 +213,7 @@
                 score = 0; uiScore.innerText = score;
                 player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: 5, powerLevel: 1 };
                 bullets = []; bossBullets = []; enemies = []; items = []; particles = []; keys = {};
-                boss.active = false; boss.y = -100; // 보스 초기화
+                boss.active = false; boss.y = -100;
                 warningMsg.style.display = 'none';
                 isGameRunning = true;
                 gameLoop();
@@ -264,11 +247,20 @@
 
                 if (!isGameRunning) return;
 
-                if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-                if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-                if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-                if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
+                // 플레이어 이동 로직
+                if (keys['ArrowLeft']) player.x -= player.speed;
+                if (keys['ArrowRight']) player.x += player.speed;
+                if (keys['ArrowUp']) player.y -= player.speed;
+                if (keys['ArrowDown']) player.y += player.speed;
 
+                // ★★★ [꼼수 방지] 투명벽 (Clamp) ★★★
+                // 플레이어가 화면 밖으로 나가려고 하면 강제로 안으로 끌고 옵니다.
+                if (player.x < 0) player.x = 0;
+                if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+                if (player.y < 0) player.y = 0;
+                if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
+
+                // 총알 발사
                 if (keys['Space']) {
                     const currentTime = Date.now();
                     if (currentTime - lastShotTime > SHOT_DELAY) {
@@ -281,116 +273,64 @@
                     }
                 }
 
-                // === 👹 보스 로직 ===
-                // 보스 등장 조건: 점수 2000 이상이고 보스가 아직 없을 때
+                // 보스 로직
                 if (score >= 2000 && !boss.active && boss.y === -100) {
-                    boss.active = true;
-                    boss.hp = 50; // 보스 체력
-                    boss.maxHp = 50;
-                    boss.y = -70; 
-                    boss.x = canvas.width / 2 - boss.width / 2;
-                    warningMsg.style.display = 'block'; // 경고 메시지 표시
-                    setTimeout(() => warningMsg.style.display = 'none', 3000); // 3초 뒤 끔
+                    boss.active = true; boss.hp = 50; boss.maxHp = 50; boss.y = -70; boss.x = canvas.width / 2 - boss.width / 2;
+                    warningMsg.style.display = 'block'; setTimeout(() => warningMsg.style.display = 'none', 3000);
                 }
 
                 if (boss.active) {
-                    // 보스 등장 애니메이션 (천천히 내려옴)
                     if (boss.y < 50) boss.y += 1;
                     else {
-                        // 좌우 이동
                         boss.x += boss.speed * boss.dir;
                         if (boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1;
-                        
-                        // 보스 공격 (랜덤 확률로 총알 발사)
-                        if (Math.random() < 0.03) {
-                            bossBullets.push({ x: boss.x + boss.width/2 - 5, y: boss.y + boss.height, width: 10, height: 20 });
-                        }
+                        if (Math.random() < 0.03) bossBullets.push({ x: boss.x + boss.width/2 - 5, y: boss.y + boss.height, width: 10, height: 20 });
                     }
-
-                    // 플레이어와 보스 몸통 박치기
                     if (player.x < boss.x + boss.width && player.x + player.width > boss.x &&
-                        player.y < boss.y + boss.height && player.y + player.height > boss.y) {
-                        triggerGameOver();
-                    }
+                        player.y < boss.y + boss.height && player.y + player.height > boss.y) triggerGameOver();
                 } else {
-                    // 보스가 없을 때만 적 생성
                     if (Math.random() < 0.03) enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
                 }
 
-                // === 충돌 처리 ===
-
-                // 1. 플레이어 총알 -> 적 & 보스
+                // 충돌 처리
                 bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
-
                 for (let i = 0; i < bullets.length; i++) {
                     let b = bullets[i]; if (b.isDead) continue; 
-                    
-                    // 보스 피격 판정
-                    if (boss.active && b.x < boss.x + boss.width && b.x + b.width > boss.x &&
-                        b.y < boss.y + boss.height && b.y + b.height > boss.y) {
-                        
-                        b.isDead = true;
-                        boss.hp--;
-                        createExplosion(b.x, b.y, '#e040fb', 3); // 보라색 파편
-                        playSound('boss_hit');
-
+                    if (boss.active && b.x < boss.x + boss.width && b.x + b.width > boss.x && b.y < boss.y + boss.height && b.y + b.height > boss.y) {
+                        b.isDead = true; boss.hp--; createExplosion(b.x, b.y, '#e040fb', 3); playSound('boss_hit');
                         if (boss.hp <= 0) {
-                            // 보스 사망!
-                            boss.active = false;
-                            boss.y = -100; // 화면 밖으로 보냄 (재등장 방지 로직 필요시 수정 가능)
-                            score += 3000; // 보스 점수
-                            uiScore.innerText = score;
-                            createExplosion(boss.x + boss.width/2, boss.y + boss.height/2, '#e040fb', 50); // 대폭발
-                            playSound('boss_die');
-                            
-                            // 보스 죽으면 모든 적/총알 제거 (클리어 느낌)
-                            enemies = [];
-                            bossBullets = [];
+                            boss.active = false; boss.y = -100; score += 3000; uiScore.innerText = score; 
+                            createExplosion(boss.x + boss.width/2, boss.y + boss.height/2, '#e040fb', 50); playSound('boss_die');
+                            enemies = []; bossBullets = [];
                         }
-                        continue; // 보스 맞췄으면 일반 적 검사 건너뜀
+                        continue;
                     }
-
-                    // 일반 적 피격 판정
                     for (let j = 0; j < enemies.length; j++) {
                         let e = enemies[j]; if (e.isDead) continue; 
                         if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
-                            b.isDead = true; e.isDead = true; 
-                            createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
+                            b.isDead = true; e.isDead = true; createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
                             if (Math.random() < 0.1) items.push({ x: e.x, y: e.y, width: 25, height: 25, isDead: false });
-                            score += 100; uiScore.innerText = score; playSound('explosion');
-                            break; 
+                            score += 100; uiScore.innerText = score; playSound('explosion'); break; 
                         }
                     }
                 }
                 bullets = bullets.filter(b => !b.isDead);
                 enemies = enemies.filter(e => !e.isDead);
 
-                // 2. 보스 총알 -> 플레이어
                 bossBullets.forEach(bb => {
-                    bb.y += 5; // 보스 총알 속도
-                    if (bb.y > canvas.height) bb.isDead = true;
-                    // 플레이어 피격
-                    if (player.x < bb.x + bb.width && player.x + player.width > bb.x &&
-                        player.y < bb.y + bb.height && player.y + player.height > bb.y) {
-                        triggerGameOver();
-                    }
+                    bb.y += 5; if (bb.y > canvas.height) bb.isDead = true;
+                    if (player.x < bb.x + bb.width && player.x + player.width > bb.x && player.y < bb.y + bb.height && player.y + player.height > bb.y) triggerGameOver();
                 });
                 bossBullets = bossBullets.filter(bb => !bb.isDead);
 
-                // 3. 적 이동 & 충돌
                 enemies.forEach(e => {
                     e.y += 3; if (e.y > canvas.height) e.isDead = true;
-                    if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x &&
-                        player.y < e.y + e.height && player.y + player.height > e.y) {
-                        triggerGameOver();
-                    }
+                    if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) triggerGameOver();
                 });
 
-                // 4. 아이템
                 items.forEach(item => {
                     item.y += 2;
-                    if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x &&
-                        player.y < item.y + item.height && player.y + player.height > item.y) {
+                    if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {
                         item.isDead = true; player.powerLevel = 2; score += 500; uiScore.innerText = score; playSound('powerup');
                     }
                     if (item.y > canvas.height) item.isDead = true;
@@ -405,21 +345,12 @@
                 ctx.globalAlpha = 1.0;
                 items.forEach(item => drawPixelSprite(itemSprite, item.x, item.y, '#ffff00', 5));
                 if (isGameRunning) drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
-                
-                // 👹 보스 그리기
                 if (boss.active) {
-                    drawPixelSprite(bossSprite, boss.x, boss.y, '#e040fb', 10); // 픽셀 크기 10으로 확대
-                    // 보스 체력바
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(boss.x, boss.y - 15, boss.width, 10);
-                    ctx.fillStyle = '#00ff00';
-                    ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.hp / boss.maxHp), 10);
+                    drawPixelSprite(bossSprite, boss.x, boss.y, '#e040fb', 10);
+                    ctx.fillStyle = 'red'; ctx.fillRect(boss.x, boss.y - 15, boss.width, 10);
+                    ctx.fillStyle = '#00ff00'; ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.hp / boss.maxHp), 10);
                 }
-
-                // 보스 총알
-                ctx.fillStyle = '#e040fb';
-                bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
-
+                ctx.fillStyle = '#e040fb'; bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
                 enemies.forEach(e => drawPixelSprite(enemySprite, e.x, e.y, '#ff5252', pixelSize));
                 ctx.fillStyle = '#ffeb3b'; bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
             }
