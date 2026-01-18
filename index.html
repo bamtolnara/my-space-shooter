@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 터치 이동 개선</title>
+    <title>픽셀 슈터: 4스테이지 대규모 업데이트</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -11,18 +11,24 @@
     <style>
         body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; touch-action: none; font-family: 'Courier New', monospace; }
         canvas { background: #000; border: 2px solid #444; image-rendering: pixelated; box-shadow: 0 0 20px rgba(0,255,255,0.1); max-width: 100%; max-height: 80vh; }
-        #ui { position: absolute; top: 10px; font-size: 20px; font-weight: bold; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        #game-over-screen { display: none; } 
-        h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
-        h2 { font-size: 40px; color: #ff5252; margin-bottom: 10px; text-shadow: 3px 3px 0 #fff; }
         
+        #ui { position: absolute; top: 10px; left: 10px; font-size: 20px; font-weight: bold; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+        #stage-ui { position: absolute; top: 10px; right: 10px; font-size: 20px; font-weight: bold; color: #00e5ff; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        #game-over-screen, #victory-screen { display: none; } 
+        
+        h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
+        h2 { font-size: 40px; margin-bottom: 10px; text-shadow: 3px 3px 0 #fff; }
+        .gameover-title { color: #ff5252; }
+        .victory-title { color: #ffd700; text-shadow: 0 0 20px #ffd700; }
+
         input { padding: 10px; font-size: 18px; text-align: center; background: #222; border: 2px solid #00e5ff; color: white; font-family: 'Courier New', monospace; margin-bottom: 15px; width: 200px; }
         button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold; box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px; margin-top: 10px; }
         button:active { transform: scale(0.95); background: white; }
         
         .ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 15px; text-align: left; }
-        #gameover-ranking-box { max-height: 250px; overflow-y: auto; }
+        .ranking-scroll { max-height: 250px; overflow-y: auto; }
 
         .rank-item { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
         .rank-1 { color: #ffd700; font-weight: bold; } 
@@ -30,7 +36,10 @@
         .rank-3 { color: #cd7f32; }
         
         #warning-msg { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red; animation: blink 0.5s infinite; pointer-events: none; z-index: 50; }
+        #stage-msg { display: none; position: absolute; top: 40%; width: 100%; text-align: center; font-size: 50px; color: #00e5ff; font-weight: bold; text-shadow: 0 0 20px cyan; animation: fadeOut 3s forwards; pointer-events: none; z-index: 50; }
+        
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111; }
@@ -39,10 +48,13 @@
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
-    <div id="warning-msg">⚠ WARNING ⚠<br>BOSS LOCKED ON</div>
+    <div id="stage-ui">STAGE 1</div>
+    
+    <div id="warning-msg">⚠ WARNING ⚠<br>BOSS APPROACHING</div>
+    <div id="stage-msg">STAGE 1 START</div>
     
     <div id="start-screen" class="screen">
-        <h1>PIXEL SHOOTER</h1>
+        <h1>PIXEL SHOOTER<br><span style="font-size:16px; color:#aaa;">LEGENDARY EDITION</span></h1>
         <div class="ranking-box">
             <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 TOP 3 PLAYERS</div>
             <div id="start-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
@@ -53,13 +65,25 @@
     </div>
 
     <div id="game-over-screen" class="screen">
-        <h2>GAME OVER</h2>
+        <h2 class="gameover-title">GAME OVER</h2>
         <div id="final-score">SCORE: 0</div>
-        <div class="ranking-box" id="gameover-ranking-box">
-            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 HALL OF FAME (TOP 10)</div>
+        <div class="ranking-box ranking-scroll">
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 HALL OF FAME</div>
             <div id="gameover-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
         <button id="restartBtn">RETRY</button>
+    </div>
+
+    <div id="victory-screen" class="screen">
+        <h2 class="victory-title">LEGENDARY VICTORY!</h2>
+        <p style="font-size: 20px; color: white; margin-bottom: 20px;">모든 스테이지를 정복했습니다!</p>
+        <div id="victory-score" style="font-size: 24px; color: #00e5ff; margin-bottom: 20px;">SCORE: 0</div>
+        
+        <div class="ranking-box ranking-scroll">
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 LEGENDS (TOP 10)</div>
+            <div id="victory-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
+        </div>
+        <button id="victoryBtn">PLAY AGAIN</button>
     </div>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
@@ -98,71 +122,74 @@
             if (!db) return;
             const startList = document.getElementById('start-ranking-list');
             const overList = document.getElementById('gameover-ranking-list');
+            const victoryList = document.getElementById('victory-ranking-list');
             
-            if(startList) startList.innerHTML = "랭킹 로딩중...";
-            if(overList) overList.innerHTML = "랭킹 로딩중...";
+            const lists = [startList, overList, victoryList];
+            lists.forEach(l => { if(l) l.innerHTML = "랭킹 로딩중..."; });
 
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val();
-                if (!data) {
-                    if(startList) startList.innerHTML = "기록 없음";
-                    if(overList) overList.innerHTML = "기록 없음";
-                    return;
-                }
                 let rankingArr = [];
-                for (let key in data) rankingArr.push(data[key]);
-                rankingArr.sort((a, b) => b.score - a.score);
+                if (data) {
+                    for (let key in data) rankingArr.push(data[key]);
+                    rankingArr.sort((a, b) => b.score - a.score);
+                }
 
-                let startHtml = "";
-                rankingArr.slice(0, 3).forEach((rank, index) => {
-                    let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-                    startHtml += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
+                lists.forEach((list, listIdx) => {
+                    if(!list) return;
+                    if(rankingArr.length === 0) {
+                        list.innerHTML = "기록 없음";
+                        return;
+                    }
+                    let limit = (list === startList) ? 3 : 10;
+                    let html = "";
+                    rankingArr.slice(0, limit).forEach((rank, index) => {
+                        let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+                        html += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
+                    });
+                    list.innerHTML = html;
                 });
-                if(startList) startList.innerHTML = startHtml;
-
-                let overHtml = "";
-                rankingArr.forEach((rank, index) => {
-                    let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-                    overHtml += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
-                });
-                if(overList) overList.innerHTML = overHtml;
             });
         }
 
         window.onload = function() {
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
+            
             const startScreen = document.getElementById('start-screen');
             const gameOverScreen = document.getElementById('game-over-screen');
+            const victoryScreen = document.getElementById('victory-screen');
             const startBtn = document.getElementById('startBtn');
             const restartBtn = document.getElementById('restartBtn');
+            const victoryBtn = document.getElementById('victoryBtn');
             const usernameInput = document.getElementById('username');
             const finalScoreEl = document.getElementById('final-score');
+            const victoryScoreEl = document.getElementById('victory-score');
             const uiScore = document.getElementById('score');
+            const uiStage = document.getElementById('stage-ui');
             const warningMsg = document.getElementById('warning-msg');
+            const stageMsg = document.getElementById('stage-msg');
 
             let isGameRunning = false;
             let currentUsername = "Unknown"; 
-
             let now, then, elapsed;
             const fps = 60;
             const fpsInterval = 1000 / fps;
 
             loadOnlineRanking();
 
-            startBtn.onclick = function() {
+            startBtn.onclick = () => checkNameAndStart();
+            restartBtn.onclick = () => { gameOverScreen.style.display = 'none'; startGame(); };
+            victoryBtn.onclick = () => { victoryScreen.style.display = 'none'; startGame(); };
+
+            function checkNameAndStart() {
                 const name = usernameInput.value.trim();
                 if (name === "") { alert("닉네임을 입력해주세요!"); return; }
                 currentUsername = name;
                 startScreen.style.display = 'none';
                 initAudio();
                 startGame();
-            };
-
-            restartBtn.onclick = function() {
-                gameOverScreen.style.display = 'none';
-                startGame();
-            };
+            }
 
             let audioCtx;
             function initAudio() {
@@ -193,6 +220,8 @@
                     osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
                 } else if (type === 'gameover') {
                     osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(10, now + 1.0); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.001, now + 1.0); osc.start(now); osc.stop(now + 1.0);
+                } else if (type === 'victory') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2); osc.frequency.linearRampToValueAtTime(1200, now + 0.5); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 2.0); osc.start(now); osc.stop(now + 2.0);
                 }
             }
 
@@ -210,23 +239,19 @@
                 }
             }
 
-            let score = 0; const pixelSize = 5;
+            let score = 0; 
+            let stage = 1; 
+            const pixelSize = 5;
             let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1 };
             let boss = { active: false, x: 0, y: -100, width: 90, height: 70, hp: 0, maxHp: 50, dir: 1, speed: 2 };
             let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
             let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
+            let lastTouchX = null, lastTouchY = null;
 
             for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
 
             window.addEventListener('keydown', (e) => keys[e.code] = true);
             window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-            // ==========================================
-            // ★★★ 터치 이동 로직 개선 (상대 좌표 이동) ★★★
-            // ==========================================
-            
-            let lastTouchX = null;
-            let lastTouchY = null;
 
             canvas.addEventListener('touchstart', (e) => {
                 if(!isGameRunning) return;
@@ -239,47 +264,25 @@
             canvas.addEventListener('touchmove', (e) => {
                 if(!isGameRunning) return;
                 e.preventDefault();
-                
                 const touch = e.touches[0];
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width; 
                 const scaleY = canvas.height / rect.height;
                 
-                // 첫 터치 이동일 경우 튐 방지
                 if(lastTouchX === null || lastTouchY === null) {
-                    lastTouchX = touch.clientX;
-                    lastTouchY = touch.clientY;
-                    return;
+                    lastTouchX = touch.clientX; lastTouchY = touch.clientY; return;
                 }
 
-                // 이동한 거리(Delta) 계산
                 let deltaX = (touch.clientX - lastTouchX) * scaleX;
                 let deltaY = (touch.clientY - lastTouchY) * scaleY;
+                
+                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + deltaX));
+                player.y = Math.max(0, Math.min(canvas.height - player.height, player.y + deltaY));
 
-                // 플레이어 위치 업데이트 (기존 위치 + 이동량)
-                let nextX = player.x + deltaX;
-                let nextY = player.y + deltaY;
-
-                // 화면 가두기 (Clamp)
-                if (nextX < 0) nextX = 0;
-                if (nextX > canvas.width - player.width) nextX = canvas.width - player.width;
-                if (nextY < 0) nextY = 0;
-                if (nextY > canvas.height - player.height) nextY = canvas.height - player.height;
-
-                player.x = nextX;
-                player.y = nextY;
-
-                // 현재 위치 저장
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
-
+                lastTouchX = touch.clientX; lastTouchY = touch.clientY;
             }, { passive: false });
 
-            canvas.addEventListener('touchend', (e) => {
-                lastTouchX = null;
-                lastTouchY = null;
-            });
-
+            canvas.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
 
             function createExplosion(x, y, color, count = 15) {
                 for(let i=0; i<count; i++) {
@@ -287,17 +290,24 @@
                 }
             }
 
+            function showStageTitle(num) {
+                stageMsg.innerText = num === 4 ? "FINAL STAGE" : "STAGE " + num;
+                stageMsg.style.display = 'block';
+                stageMsg.style.animation = 'none';
+                stageMsg.offsetHeight; 
+                stageMsg.style.animation = 'fadeOut 3s forwards';
+            }
+
             function startGame() {
-                score = 0; uiScore.innerText = score;
+                score = 0; stage = 1;
+                uiScore.innerText = score;
+                uiStage.innerText = "STAGE 1";
                 player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: 5, powerLevel: 1 };
                 bullets = []; bossBullets = []; enemies = []; items = []; particles = []; keys = {};
                 boss.active = false; boss.y = -100;
                 warningMsg.style.display = 'none';
                 isGameRunning = true;
-                
-                lastTouchX = null;
-                lastTouchY = null;
-
+                showStageTitle(1); 
                 then = Date.now();
                 gameLoop();
             }
@@ -313,6 +323,21 @@
                     loadOnlineRanking();
                     gameOverScreen.style.display = 'flex';
                 }, 1000);
+            }
+
+            function triggerVictory() {
+                isGameRunning = false;
+                for(let i=0; i<15; i++) {
+                    setTimeout(() => createExplosion(Math.random()*canvas.width, Math.random()*canvas.height, ['#f00','#0f0','#00f','#ff0'][i%4], 30), i*200);
+                }
+                playSound('victory');
+                saveScoreToOnline(currentUsername, score);
+                setTimeout(() => {
+                    cancelAnimationFrame(animationId);
+                    victoryScoreEl.innerText = "FINAL SCORE: " + score;
+                    loadOnlineRanking();
+                    victoryScreen.style.display = 'flex';
+                }, 2000);
             }
 
             function gameLoop() {
@@ -337,15 +362,10 @@
 
                 if (!isGameRunning) return;
 
-                if (keys['ArrowLeft']) player.x -= player.speed;
-                if (keys['ArrowRight']) player.x += player.speed;
-                if (keys['ArrowUp']) player.y -= player.speed;
-                if (keys['ArrowDown']) player.y += player.speed;
-
-                if (player.x < 0) player.x = 0;
-                if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
-                if (player.y < 0) player.y = 0;
-                if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
+                if (keys['ArrowLeft']) player.x = Math.max(0, player.x - player.speed);
+                if (keys['ArrowRight']) player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+                if (keys['ArrowUp']) player.y = Math.max(0, player.y - player.speed);
+                if (keys['ArrowDown']) player.y = Math.min(canvas.height - player.height, player.y + player.speed);
 
                 const currentTime = Date.now();
                 if (currentTime - lastShotTime > SHOT_DELAY) {
@@ -357,30 +377,67 @@
                     playSound('shoot'); lastShotTime = currentTime;
                 }
 
-                if (score >= 2000 && !boss.active && boss.y === -100) {
-                    boss.active = true; boss.hp = 50; boss.maxHp = 50; boss.y = -70; boss.x = canvas.width / 2 - boss.width / 2;
-                    warningMsg.style.display = 'block'; setTimeout(() => warningMsg.style.display = 'none', 3000);
+                // ===================================
+                // 🗺️ 스테이지 설정 (요청 사항 반영)
+                // ===================================
+                let bossThreshold = 5000;
+                let bossMaxHp = 50;
+                let rewardScore = 20000;
+
+                if (stage === 1) { bossThreshold = 5000; bossMaxHp = 50; rewardScore = 20000; }
+                else if (stage === 2) { bossThreshold = 30000; bossMaxHp = 100; rewardScore = 50000; }
+                else if (stage === 3) { bossThreshold = 100000; bossMaxHp = 200; rewardScore = 100000; }
+                else if (stage === 4) { bossThreshold = 250000; bossMaxHp = 500; rewardScore = 250000; }
+
+                if (score >= bossThreshold && !boss.active && boss.y === -100) {
+                    boss.active = true; 
+                    boss.hp = bossMaxHp; 
+                    boss.maxHp = bossMaxHp; 
+                    boss.y = -70; 
+                    boss.x = canvas.width / 2 - boss.width / 2;
+                    warningMsg.style.display = 'block'; 
+                    setTimeout(() => warningMsg.style.display = 'none', 3000);
                 }
 
                 if (boss.active) {
-                    if (boss.y < 50) boss.y += 1;
+                    if (boss.y < 50) boss.y += 1; 
                     else {
-                        boss.x += boss.speed * boss.dir;
+                        let moveSpeed = (stage >= 3) ? 3 : 2;
+                        boss.x += moveSpeed * boss.dir;
                         if (boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1;
-                        if (Math.random() < 0.03) {
+                        
+                        // ★ 스테이지별 공격 패턴 설정 ★
+                        let shootProb = 0.03 + (stage * 0.01); 
+                        if (Math.random() < shootProb) {
                             let bossCenterX = boss.x + boss.width / 2;
                             let bossCenterY = boss.y + boss.height;
                             let angle = Math.atan2(player.y - bossCenterY, player.x - bossCenterX);
-                            let speed = 6;
-                            let bulletDx = Math.cos(angle) * speed;
-                            let bulletDy = Math.sin(angle) * speed;
-                            bossBullets.push({ x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, dx: bulletDx, dy: bulletDy });
+                            
+                            // 4스테이지 광속 탄막 (속도 15)
+                            let bulletSpeed = (stage === 4) ? 15 : (5 + stage); 
+
+                            // 3스테이지 탄막 수 증가 (3발 발사)
+                            if (stage === 3) {
+                                for(let a = -0.3; a <= 0.3; a += 0.3) {
+                                    bossBullets.push({ 
+                                        x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, 
+                                        dx: Math.cos(angle + a) * bulletSpeed, dy: Math.sin(angle + a) * bulletSpeed 
+                                    });
+                                }
+                            } else {
+                                // 1, 2, 4 스테이지 단발 (4는 광속)
+                                bossBullets.push({ 
+                                    x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, 
+                                    dx: Math.cos(angle) * bulletSpeed, dy: Math.sin(angle) * bulletSpeed 
+                                });
+                            }
                         }
                     }
                     if (player.x < boss.x + boss.width && player.x + player.width > boss.x &&
                         player.y < boss.y + boss.height && player.y + player.height > boss.y) triggerGameOver();
                 } else {
-                    if (Math.random() < 0.03) {
+                    let spawnRate = 0.03 + (stage * 0.01);
+                    if (Math.random() < spawnRate) {
                         let dx = 0;
                         if(Math.random() < 0.3) dx = (player.x - (Math.random() * canvas.width)) * 0.01;
                         enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, dx: dx, isDead: false });
@@ -388,17 +445,32 @@
                 }
 
                 bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
+                
                 for (let i = 0; i < bullets.length; i++) {
                     let b = bullets[i]; if (b.isDead) continue; 
+                    
                     if (boss.active && b.x < boss.x + boss.width && b.x + b.width > boss.x && b.y < boss.y + boss.height && b.y + b.height > boss.y) {
                         b.isDead = true; boss.hp--; createExplosion(b.x, b.y, '#e040fb', 3); playSound('boss_hit');
+                        
                         if (boss.hp <= 0) {
-                            boss.active = false; boss.y = -100; score += 3000; uiScore.innerText = score; 
-                            createExplosion(boss.x + boss.width/2, boss.y + boss.height/2, '#e040fb', 50); playSound('boss_die');
-                            enemies = []; bossBullets = [];
+                            boss.active = false; boss.y = -100; 
+                            score += rewardScore; // ★ 스테이지별 보상 점수 적용
+                            uiScore.innerText = score; 
+                            createExplosion(boss.x + boss.width/2, boss.y + boss.height/2, '#e040fb', 50); 
+                            playSound('boss_die');
+                            enemies = []; bossBullets = []; bullets = []; 
+
+                            if (stage < 4) {
+                                stage++; 
+                                uiStage.innerText = "STAGE " + stage;
+                                showStageTitle(stage);
+                            } else {
+                                triggerVictory();
+                            }
                         }
                         continue;
                     }
+                    
                     for (let j = 0; j < enemies.length; j++) {
                         let e = enemies[j]; if (e.isDead) continue; 
                         if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
@@ -419,7 +491,8 @@
                 bossBullets = bossBullets.filter(bb => !bb.isDead);
 
                 enemies.forEach(e => {
-                    e.y += 3; e.x += (e.dx || 0);
+                    e.y += (3 + stage); 
+                    e.x += (e.dx || 0);
                     if (e.y > canvas.height) e.isDead = true;
                     if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) triggerGameOver();
                 });
@@ -442,15 +515,24 @@
                 items.forEach(item => drawPixelSprite(itemSprite, item.x, item.y, '#ffff00', 5));
                 if (isGameRunning) drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
                 if (boss.active) {
-                    drawPixelSprite(bossSprite, boss.x, boss.y, '#e040fb', 10);
+                    // ★ 스테이지별 보스 색상 변경 ★
+                    let bossColor = '#e040fb'; // 1탄: 보라
+                    if (stage === 2) bossColor = '#00e5ff'; // 2탄: 청록
+                    if (stage === 3) bossColor = '#ffff00'; // 3탄: 노랑
+                    if (stage === 4) bossColor = '#ff0000'; // 4탄: 빨강
+                    
+                    drawPixelSprite(bossSprite, boss.x, boss.y, bossColor, 10);
                     ctx.fillStyle = 'red'; ctx.fillRect(boss.x, boss.y - 15, boss.width, 10);
                     ctx.fillStyle = '#00ff00'; ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.hp / boss.maxHp), 10);
+                    
+                    // 총알 색상도 보스 색깔 따라감
+                    ctx.fillStyle = bossColor;
                 }
-                ctx.fillStyle = '#e040fb'; bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
+                
+                bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
                 enemies.forEach(e => drawPixelSprite(enemySprite, e.x, e.y, '#ff5252', pixelSize));
                 ctx.fillStyle = '#ffeb3b'; bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
             }
-            draw();
         };
     </script>
 </body>
