@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 랭킹 확장판</title>
+    <title>픽셀 슈터: 터치 이동 개선</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -21,62 +21,48 @@
         button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold; box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px; margin-top: 10px; }
         button:active { transform: scale(0.95); background: white; }
         
-        /* 랭킹 박스 공통 스타일 */
         .ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 15px; text-align: left; }
-        
-        /* 게임 오버 화면 랭킹 (스크롤 가능하게 수정) */
-        #gameover-ranking-box {
-            max-height: 250px; /* 높이 제한 */
-            overflow-y: auto;  /* 내용이 많으면 스크롤 */
-        }
+        #gameover-ranking-box { max-height: 250px; overflow-y: auto; }
 
         .rank-item { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
         .rank-1 { color: #ffd700; font-weight: bold; } 
         .rank-2 { color: #c0c0c0; } 
         .rank-3 { color: #cd7f32; }
         
-        #fireBtnMobile { display: none; position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(255, 0, 0, 0.5); border: 4px solid #ff5252; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 50; user-select: none; touch-action: manipulation; justify-content: center; align-items: center; }
-        @media (hover: none) and (pointer: coarse) { #fireBtnMobile { display: flex; } }
         #warning-msg { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red; animation: blink 0.5s infinite; pointer-events: none; z-index: 50; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         
-        /* 스크롤바 디자인 (크롬/사파리) */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00e5ff; }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
-    <div id="warning-msg">⚠ WARNING ⚠<br>BOSS APPROACHING</div>
+    <div id="warning-msg">⚠ WARNING ⚠<br>BOSS LOCKED ON</div>
     
     <div id="start-screen" class="screen">
         <h1>PIXEL SHOOTER</h1>
-        
         <div class="ranking-box">
             <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 TOP 3 PLAYERS</div>
             <div id="start-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
-
         <input type="text" id="username" placeholder="닉네임 (최대 6글자)" maxlength="6">
         <button id="startBtn">GAME START</button>
+        <p style="margin-top: 15px; color: #888; font-size: 14px;">✨ 터치 드래그로 이동 (자동 발사)</p>
     </div>
 
     <div id="game-over-screen" class="screen">
         <h2>GAME OVER</h2>
         <div id="final-score">SCORE: 0</div>
-        
         <div class="ranking-box" id="gameover-ranking-box">
             <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 HALL OF FAME (TOP 10)</div>
             <div id="gameover-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
-        
         <button id="restartBtn">RETRY</button>
     </div>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
-    <div id="fireBtnMobile">FIRE</div>
 
     <script>
         // =========================================================
@@ -92,7 +78,6 @@
   messagingSenderId: "1043130908247",
   appId: "1:1043130908247:web:0688292b8d8bbacd656d12"
 };
-
         
         // =========================================================
 
@@ -109,32 +94,25 @@
             db.ref('scores').push({ username: name, score: score });
         }
 
-        // 랭킹 불러오기 (Top 10을 가져와서 화면별로 다르게 뿌림)
         function loadOnlineRanking() {
             if (!db) return;
-            
             const startList = document.getElementById('start-ranking-list');
             const overList = document.getElementById('gameover-ranking-list');
             
             if(startList) startList.innerHTML = "랭킹 로딩중...";
             if(overList) overList.innerHTML = "랭킹 로딩중...";
 
-            // 1. 점수 기준 정렬, 상위 10개 가져오기
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val();
-
                 if (!data) {
                     if(startList) startList.innerHTML = "기록 없음";
                     if(overList) overList.innerHTML = "기록 없음";
                     return;
                 }
-
-                // 2. 데이터를 배열로 변환하고 내림차순 정렬
                 let rankingArr = [];
                 for (let key in data) rankingArr.push(data[key]);
                 rankingArr.sort((a, b) => b.score - a.score);
 
-                // 3. 시작 화면용 HTML 생성 (Top 3)
                 let startHtml = "";
                 rankingArr.slice(0, 3).forEach((rank, index) => {
                     let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
@@ -142,7 +120,6 @@
                 });
                 if(startList) startList.innerHTML = startHtml;
 
-                // 4. 게임 오버 화면용 HTML 생성 (Top 10)
                 let overHtml = "";
                 rankingArr.forEach((rank, index) => {
                     let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
@@ -167,7 +144,10 @@
             let isGameRunning = false;
             let currentUsername = "Unknown"; 
 
-            // 페이지 열리자마자 랭킹 로딩
+            let now, then, elapsed;
+            const fps = 60;
+            const fpsInterval = 1000 / fps;
+
             loadOnlineRanking();
 
             startBtn.onclick = function() {
@@ -241,17 +221,46 @@
             window.addEventListener('keydown', (e) => keys[e.code] = true);
             window.addEventListener('keyup', (e) => keys[e.code] = false);
 
+            // ==========================================
+            // ★★★ 터치 이동 로직 개선 (상대 좌표 이동) ★★★
+            // ==========================================
+            
+            let lastTouchX = null;
+            let lastTouchY = null;
+
+            canvas.addEventListener('touchstart', (e) => {
+                if(!isGameRunning) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }, { passive: false });
+
             canvas.addEventListener('touchmove', (e) => {
                 if(!isGameRunning) return;
                 e.preventDefault();
+                
                 const touch = e.touches[0];
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width; 
                 const scaleY = canvas.height / rect.height;
                 
-                let nextX = (touch.clientX - rect.left) * scaleX - player.width / 2;
-                let nextY = (touch.clientY - rect.top) * scaleY - player.height / 2;
+                // 첫 터치 이동일 경우 튐 방지
+                if(lastTouchX === null || lastTouchY === null) {
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    return;
+                }
 
+                // 이동한 거리(Delta) 계산
+                let deltaX = (touch.clientX - lastTouchX) * scaleX;
+                let deltaY = (touch.clientY - lastTouchY) * scaleY;
+
+                // 플레이어 위치 업데이트 (기존 위치 + 이동량)
+                let nextX = player.x + deltaX;
+                let nextY = player.y + deltaY;
+
+                // 화면 가두기 (Clamp)
                 if (nextX < 0) nextX = 0;
                 if (nextX > canvas.width - player.width) nextX = canvas.width - player.width;
                 if (nextY < 0) nextY = 0;
@@ -259,11 +268,18 @@
 
                 player.x = nextX;
                 player.y = nextY;
+
+                // 현재 위치 저장
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+
             }, { passive: false });
 
-            const fireBtnMobile = document.getElementById('fireBtnMobile');
-            fireBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; });
-            fireBtnMobile.addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; });
+            canvas.addEventListener('touchend', (e) => {
+                lastTouchX = null;
+                lastTouchY = null;
+            });
+
 
             function createExplosion(x, y, color, count = 15) {
                 for(let i=0; i<count; i++) {
@@ -278,6 +294,11 @@
                 boss.active = false; boss.y = -100;
                 warningMsg.style.display = 'none';
                 isGameRunning = true;
+                
+                lastTouchX = null;
+                lastTouchY = null;
+
+                then = Date.now();
                 gameLoop();
             }
 
@@ -295,7 +316,14 @@
             }
 
             function gameLoop() {
-                update(); draw(); animationId = requestAnimationFrame(gameLoop);
+                animationId = requestAnimationFrame(gameLoop);
+                now = Date.now();
+                elapsed = now - then;
+                if (elapsed > fpsInterval) {
+                    then = now - (elapsed % fpsInterval);
+                    update();
+                    draw();
+                }
             }
 
             function update() {
@@ -319,16 +347,14 @@
                 if (player.y < 0) player.y = 0;
                 if (player.y > canvas.height - player.height) player.y = canvas.height - player.height;
 
-                if (keys['Space']) {
-                    const currentTime = Date.now();
-                    if (currentTime - lastShotTime > SHOT_DELAY) {
-                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
-                        if (player.powerLevel >= 2) {
-                            bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -4, isDead: false });
-                            bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 4, isDead: false });
-                        }
-                        playSound('shoot'); lastShotTime = currentTime;
+                const currentTime = Date.now();
+                if (currentTime - lastShotTime > SHOT_DELAY) {
+                    bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
+                    if (player.powerLevel >= 2) {
+                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -4, isDead: false });
+                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 4, isDead: false });
                     }
+                    playSound('shoot'); lastShotTime = currentTime;
                 }
 
                 if (score >= 2000 && !boss.active && boss.y === -100) {
@@ -341,12 +367,24 @@
                     else {
                         boss.x += boss.speed * boss.dir;
                         if (boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1;
-                        if (Math.random() < 0.03) bossBullets.push({ x: boss.x + boss.width/2 - 5, y: boss.y + boss.height, width: 10, height: 20 });
+                        if (Math.random() < 0.03) {
+                            let bossCenterX = boss.x + boss.width / 2;
+                            let bossCenterY = boss.y + boss.height;
+                            let angle = Math.atan2(player.y - bossCenterY, player.x - bossCenterX);
+                            let speed = 6;
+                            let bulletDx = Math.cos(angle) * speed;
+                            let bulletDy = Math.sin(angle) * speed;
+                            bossBullets.push({ x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, dx: bulletDx, dy: bulletDy });
+                        }
                     }
                     if (player.x < boss.x + boss.width && player.x + player.width > boss.x &&
                         player.y < boss.y + boss.height && player.y + player.height > boss.y) triggerGameOver();
                 } else {
-                    if (Math.random() < 0.03) enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, isDead: false });
+                    if (Math.random() < 0.03) {
+                        let dx = 0;
+                        if(Math.random() < 0.3) dx = (player.x - (Math.random() * canvas.width)) * 0.01;
+                        enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, dx: dx, isDead: false });
+                    }
                 }
 
                 bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
@@ -374,13 +412,15 @@
                 enemies = enemies.filter(e => !e.isDead);
 
                 bossBullets.forEach(bb => {
-                    bb.y += 5; if (bb.y > canvas.height) bb.isDead = true;
+                    bb.x += bb.dx; bb.y += bb.dy;
+                    if (bb.y > canvas.height || bb.x < 0 || bb.x > canvas.width) bb.isDead = true;
                     if (player.x < bb.x + bb.width && player.x + player.width > bb.x && player.y < bb.y + bb.height && player.y + player.height > bb.y) triggerGameOver();
                 });
                 bossBullets = bossBullets.filter(bb => !bb.isDead);
 
                 enemies.forEach(e => {
-                    e.y += 3; if (e.y > canvas.height) e.isDead = true;
+                    e.y += 3; e.x += (e.dx || 0);
+                    if (e.y > canvas.height) e.isDead = true;
                     if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) triggerGameOver();
                 });
 
