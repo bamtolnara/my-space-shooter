@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 보스 아이템 패치</title>
+    <title>픽셀 슈터: 오리진</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -15,49 +15,31 @@
         #ui { position: absolute; top: 10px; left: 10px; font-size: 20px; font-weight: bold; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
         #stage-ui { position: absolute; top: 10px; right: 10px; font-size: 20px; font-weight: bold; color: #00e5ff; z-index: 10; text-shadow: 2px 2px 0 #000; pointer-events: none; }
 
-        #item-log-container {
-            position: absolute; bottom: 10px; left: 10px; 
-            width: 250px; height: 150px; 
-            pointer-events: none; z-index: 20;
-            display: flex; flex-direction: column-reverse; 
-            overflow: hidden;
-        }
-        .log-entry {
-            font-size: 14px; font-weight: bold; margin-top: 5px;
-            text-shadow: 1px 1px 0 #000;
-            animation: fadeOutLog 4s forwards; 
-        }
-        @keyframes fadeOutLog { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
-
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         #game-over-screen, #victory-screen { display: none; } 
         
-        h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00e5ff; text-align: center; }
-        h2 { font-size: 40px; margin-bottom: 10px; text-shadow: 3px 3px 0 #fff; }
-        .gameover-title { color: #ff5252; }
-        .victory-title { color: #ffd700; text-shadow: 0 0 20px #ffd700; }
-
+        h1 { font-size: 30px; margin-bottom: 20px; text-shadow: 4px 4px 0 #00ffff; text-align: center; }
+        
         input { padding: 10px; font-size: 18px; text-align: center; background: #222; border: 2px solid #00e5ff; color: white; font-family: 'Courier New', monospace; margin-bottom: 15px; width: 200px; }
         button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #00e5ff; border: none; font-family: 'Courier New', monospace; font-weight: bold; box-shadow: 0 0 15px #00e5ff; transition: 0.2s; border-radius: 10px; margin-top: 10px; }
         button:active { transform: scale(0.95); background: white; }
         
+        #donateBtn { background: #ff4081; box-shadow: 0 0 15px #ff4081; margin-top: 20px; font-size: 16px; padding: 10px 20px; color: white; }
+        
         .ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 15px; text-align: left; }
-        .ranking-scroll { max-height: 250px; overflow-y: auto; }
+        .ranking-scroll { max-height: 150px; overflow-y: auto; }
+        .rank-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .rank-1 { color: #ffd700; font-weight: bold; } .rank-2 { color: #c0c0c0; } .rank-3 { color: #cd7f32; }
 
-        .rank-item { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
-        .rank-1 { color: #ffd700; font-weight: bold; } 
-        .rank-2 { color: #c0c0c0; } 
-        .rank-3 { color: #cd7f32; }
+        #item-log-container { position: absolute; bottom: 10px; left: 10px; width: 250px; height: 150px; pointer-events: none; z-index: 20; display: flex; flex-direction: column-reverse; overflow: hidden; }
+        .log-entry { font-size: 14px; font-weight: bold; margin-top: 5px; text-shadow: 1px 1px 0 #000; animation: fadeOutLog 4s forwards; }
+        @keyframes fadeOutLog { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
         
         #warning-msg { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 40px; color: red; font-weight: bold; text-shadow: 0 0 10px red; animation: blink 0.5s infinite; pointer-events: none; z-index: 50; }
-        #stage-msg { display: none; position: absolute; top: 40%; width: 100%; text-align: center; font-size: 50px; color: #00e5ff; font-weight: bold; text-shadow: 0 0 20px cyan; animation: fadeOut 3s forwards; pointer-events: none; z-index: 50; }
-        
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        #stage-msg { display: none; position: absolute; top: 40%; width: 100%; text-align: center; font-size: 50px; color: #00e5ff; font-weight: bold; text-shadow: 0 0 20px cyan; animation: fadeOut 3s forwards; pointer-events: none; z-index: 50; }
         @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
         
-        .item-popup { position: absolute; color: white; font-weight: bold; font-size: 14px; pointer-events: none; animation: floatUp 1s forwards; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
-
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
@@ -71,35 +53,36 @@
     <div id="stage-msg">STAGE 1 START</div>
     
     <div id="start-screen" class="screen">
-        <h1>PIXEL SHOOTER</h1>
+        <h1 style="color:#00e5ff; text-shadow: 0 0 15px #0000ff;">🚀 PIXEL SHOOTER</h1>
+        
         <div class="ranking-box">
-            <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 TOP 3 PLAYERS</div>
-            <div id="start-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
+            <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 HALL OF FAME</div>
+            <div id="start-ranking-list" style="text-align:center; color:#666;">랭킹 로딩중...</div>
         </div>
-        <input type="text" id="username" placeholder="닉네임 (최대 6글자)" maxlength="6">
+
+        <input type="text" id="username" placeholder="닉네임" maxlength="6">
         <button id="startBtn">GAME START</button>
-        <div style="margin-top: 15px; font-size: 12px; color: #aaa; text-align: left;">
+        <button id="donateBtn">☕ 개발자 후원 (보너스)</button>
+
+        <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
             ⚡[P]파워업 &nbsp; 💨[S]스피드<br>
             🛡️[H]쉴드 &nbsp; &nbsp; 💣[B]폭탄
         </div>
     </div>
 
     <div id="game-over-screen" class="screen">
-        <h2 class="gameover-title">GAME OVER</h2>
+        <h2>GAME OVER</h2>
         <div id="final-score">SCORE: 0</div>
         <div class="ranking-box ranking-scroll">
-            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 HALL OF FAME</div>
             <div id="gameover-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
         <button id="restartBtn">RETRY</button>
     </div>
 
     <div id="victory-screen" class="screen">
-        <h2 class="victory-title">VICTORY!</h2>
-        <p style="font-size: 20px; color: white; margin-bottom: 20px;">모든 스테이지 클리어!</p>
-        <div id="victory-score" style="font-size: 24px; color: #00e5ff; margin-bottom: 20px;">SCORE: 0</div>
+        <h2 style="color:#ffd700;">MISSION CLEAR!</h2>
+        <div id="victory-score">SCORE: 0</div>
         <div class="ranking-box ranking-scroll">
-            <div style="text-align:center; margin-bottom:10px; color:#aaa;">🏆 LEGENDS</div>
             <div id="victory-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
         <button id="victoryBtn">PLAY AGAIN</button>
@@ -109,41 +92,47 @@
 
     <script>
         // =========================================================
-        // 🔥 [1] 본인의 파이어베이스 코드를 다시 넣어주세요! 🔥
+        // 🔥 [2] 파이어베이스 설정 (고객님 키값 적용 완료!)
         // =========================================================
-        
         const firebaseConfig = {
-  apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE",
-  authDomain: "pixel-shooter-1e9b9.firebaseapp.com",
-  databaseURL: "https://pixel-shooter-1e9b9-default-rtdb.firebaseio.com",
-  projectId: "pixel-shooter-1e9b9",
-  storageBucket: "pixel-shooter-1e9b9.firebasestorage.app",
-  messagingSenderId: "1043130908247",
-  appId: "1:1043130908247:web:0688292b8d8bbacd656d12"
-};
-        
+            apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE",
+            authDomain: "pixel-shooter-1e9b9.firebaseapp.com",
+            databaseURL: "https://pixel-shooter-1e9b9-default-rtdb.firebaseio.com",
+            projectId: "pixel-shooter-1e9b9",
+            storageBucket: "pixel-shooter-1e9b9.firebasestorage.app",
+            messagingSenderId: "1043130908247",
+            appId: "1:1043130908247:web:0688292b8d8bbacd656d12"
+        };
         // =========================================================
 
         let db;
+        let isDbConnected = false;
+
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
+            isDbConnected = true;
+            console.log("DB 연결 성공");
         } catch (e) {
-            console.log("DB 설정 필요");
+            console.log("DB 연결 오류:", e);
         }
 
         function saveScoreToOnline(name, score) {
-            if (!db) return;
+            if (!isDbConnected) return;
             db.ref('scores').push({ username: name, score: score });
         }
 
         function loadOnlineRanking() {
-            if (!db) return;
-            const startList = document.getElementById('start-ranking-list');
-            const overList = document.getElementById('gameover-ranking-list');
-            const victoryList = document.getElementById('victory-ranking-list');
-            const lists = [startList, overList, victoryList];
-            lists.forEach(l => { if(l) l.innerHTML = "랭킹 로딩중..."; });
+            const lists = [
+                document.getElementById('start-ranking-list'),
+                document.getElementById('gameover-ranking-list'),
+                document.getElementById('victory-ranking-list')
+            ];
+            
+            if (!isDbConnected) {
+                lists.forEach(l => l.innerHTML = "랭킹 서버 미연결");
+                return;
+            }
 
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val();
@@ -152,522 +141,397 @@
                     for (let key in data) rankingArr.push(data[key]);
                     rankingArr.sort((a, b) => b.score - a.score);
                 }
-                lists.forEach((list) => {
-                    if(!list) return;
-                    if(rankingArr.length === 0) { list.innerHTML = "기록 없음"; return; }
-                    let limit = (list === startList) ? 3 : 10;
-                    let html = "";
-                    rankingArr.slice(0, limit).forEach((rank, index) => {
+                
+                let html = "";
+                if(rankingArr.length === 0) html = "기록 없음";
+                else {
+                    rankingArr.forEach((rank, index) => {
                         let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
                         html += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`;
                     });
-                    list.innerHTML = html;
-                });
+                }
+                lists.forEach(l => l.innerHTML = html);
             });
         }
 
-        window.onload = function() {
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const victoryBtn = document.getElementById('victoryBtn');
+        const donateBtn = document.getElementById('donateBtn');
+        const usernameInput = document.getElementById('username');
+        const uiScore = document.getElementById('score');
+        const uiStage = document.getElementById('stage-ui');
+        const warningMsg = document.getElementById('warning-msg');
+        const stageMsg = document.getElementById('stage-msg');
+        const itemLogContainer = document.getElementById('item-log-container');
+
+        let isGameRunning = false;
+        let currentUsername = "Player";
+        let startShield = false;
+        let now, then, elapsed;
+        const fps = 60; const fpsInterval = 1000 / fps;
+        const ITEM_DURATION = 10000; 
+        const pixelSize = 5;
+
+        // ★★★ 오브젝트 풀 ★★★
+        const bulletPool = [];   
+        const enemyPool = [];    
+        const particlePool = []; 
+
+        const STAGE_DATA = {
+            1: { triggerScore: 5000,   bossHp: 50,  reward: 20000,  color: '#ff5252' }, 
+            2: { triggerScore: 30000,  bossHp: 100, reward: 50000,  color: '#00e5ff' }, 
+            3: { triggerScore: 100000, bossHp: 200, reward: 100000, color: '#ffff00' }, 
+            4: { triggerScore: 250000, bossHp: 500, reward: 300000, color: '#ff0000' }  
+        };
+
+        // 🚀 기본 비행 기체 (은색 전투기)
+        const basicPlaneSprite = [
+            [0,0,0,'#cfd8dc',0,0,0],
+            [0,0,'#cfd8dc','#cfd8dc','#cfd8dc',0,0],
+            [0,'#90a4ae','#cfd8dc','#00e5ff','#cfd8dc','#90a4ae',0], 
+            ['#90a4ae','#90a4ae','#cfd8dc','#cfd8dc','#cfd8dc','#90a4ae','#90a4ae'],
+            [0,'#eceff1','#455a64','#455a64','#455a64','#eceff1',0], 
+            [0,0,'#ff5722',0,'#ff5722',0,0] 
+        ];
+
+        // ⚡ [HIDDEN] 토르 기체
+        const thorSprite = [
+            [0,0,0,0,'#ffe082','#ffe082','#ffe082',0,0,0,0], 
+            [0,0,0,'#ffe082','#ffe082','#ffe082','#ffe082','#ffe082',0,0,0], 
+            [0,0,0,'#ffe082','#ffe082','#ffe082','#ffe082','#ffe082',0,0,0], 
+            [0,0,'#003366','#ffe082','#ffe082','#ffe082','#ffe082','#ffe082',0,0,0], 
+            [0,0,'#003366','#d32f2f','#d32f2f','#d32f2f','#d32f2f','#003366','#b0b0b0',0,0], 
+            [0,0,'#003366','#d32f2f','#d32f2f','#d32f2f','#d32f2f','#003366',0,'#c0c0c0','#c0c0c0'], 
+            [0,0,0,'#d32f2f',0,'#d32f2f',0,0,0,'#c0c0c0','#c0c0c0']
+        ];
+
+        const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
+        const bossSpriteMono = [[0,0,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1],[1,0,1,1,1,1,1,0,1],[0,0,1,0,0,0,1,0,0],[0,1,1,0,0,0,1,1,0]];
+        const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000';
+        const itemSprites = {
+            'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 
+            'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 
+            'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 
+            'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]]  
+        };
+
+        function drawPixelSprite(sprite, x, y, pixelSize, overrideColor = null) {
+            for(let r=0; r<sprite.length; r++) {
+                for(let c=0; c<sprite[r].length; c++) {
+                    let pixel = sprite[r][c];
+                    if (pixel === 0) continue;
+                    ctx.fillStyle = overrideColor ? overrideColor : (typeof pixel === 'string' ? pixel : 'white');
+                    ctx.fillRect(x + c*pixelSize, y + r*pixelSize, pixelSize, pixelSize);
+                }
+            }
+        }
+
+        let score = 0; let stage = 1;
+        let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0 };
+        let boss = { active: false, x: 0, y: -100, width: 90, height: 70, hp: 0, maxHp: 50, dir: 1 };
+        let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
+        let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
+        let lastTouchX = null, lastTouchY = null;
+
+        for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
+
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            if(!isGameRunning) return; e.preventDefault();
+            const rect = canvas.getBoundingClientRect(); const touch = e.touches[0];
+            const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+            if(lastTouchX === null) { lastTouchX = touch.clientX; lastTouchY = touch.clientY; return; }
+            let deltaX = (touch.clientX - lastTouchX) * scaleX; let deltaY = (touch.clientY - lastTouchY) * scaleY;
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + deltaX));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y + deltaY));
+            lastTouchX = touch.clientX; lastTouchY = touch.clientY;
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
+
+        function spawnBullet(x, y, dx, dy, w, h) {
+            let b = bulletPool.length > 0 ? bulletPool.pop() : { x:0, y:0, width:0, height:0, dx:0, dy:0, isDead:false };
+            b.x=x; b.y=y; b.dx=dx||0; b.dy=dy||-8; b.width=w; b.height=h; b.isDead=false;
+            bullets.push(b);
+        }
+
+        function createExplosion(x, y, color, count = 8) { 
+            for(let i=0; i<count; i++) {
+                let p = particlePool.length > 0 ? particlePool.pop() : { x:0, y:0, dx:0, dy:0, size:0, life:0, color:'' };
+                p.x = x; p.y = y; 
+                p.dx = (Math.random() - 0.5) * 8; 
+                p.dy = (Math.random() - 0.5) * 8; 
+                p.size = Math.random() * 4 + 2; 
+                p.life = 1.0; 
+                p.color = color;
+                particles.push(p);
+            }
+        }
+        
+        function spawnEnemy(x, y) {
+            let e = enemyPool.length > 0 ? enemyPool.pop() : { x:0, y:0, width:35, height:30, isDead:false };
+            e.x = x; e.y = y; e.isDead = false;
+            enemies.push(e);
+        }
+
+        function showItemPopup(text, x, y, color) { const popup = document.createElement('div'); popup.className = 'item-popup'; popup.innerText = text; popup.style.left = (canvas.offsetLeft + x) + 'px'; popup.style.top = (canvas.offsetTop + y) + 'px'; popup.style.color = color; popup.style.position='absolute'; popup.style.fontWeight='bold'; document.body.appendChild(popup); setTimeout(() => popup.remove(), 1000); }
+        function addItemLog(text, color) { const log = document.createElement('div'); log.className = 'log-entry'; log.innerText = text; log.style.color = color; itemLogContainer.prepend(log); if(itemLogContainer.children.length>5) itemLogContainer.lastChild.remove(); }
+        function showStageTitle(num) { stageMsg.innerText = num === 4 ? "FINAL STAGE" : "STAGE " + num; stageMsg.style.display = 'block'; stageMsg.style.animation = 'none'; stageMsg.offsetHeight; stageMsg.style.animation = 'fadeOut 3s forwards'; }
+
+        let audioCtx;
+        function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state === 'suspended') audioCtx.resume(); }
+        function playSound(type) {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+            if (type === 'shoot') { osc.type = 'square'; osc.frequency.setValueAtTime(800, now); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); } 
+            else if (type === 'explosion') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); } 
+            else if (type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(150, now); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); } 
+            else if (type === 'boss_die') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 1.5); osc.start(now); osc.stop(now + 1.5); } 
+            else if (type === 'powerup') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); } 
+            else if (type === 'shield_break') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.5); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); } 
+            else if (type === 'bomb') { osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(1000, now + 0.5); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
+            osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+        }
+
+        function startGame() {
+            score = 0; stage = 1; uiScore.innerText = score; uiStage.innerText = "STAGE 1";
+            player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0 };
             
-            const startScreen = document.getElementById('start-screen');
-            const gameOverScreen = document.getElementById('game-over-screen');
-            const victoryScreen = document.getElementById('victory-screen');
-            const startBtn = document.getElementById('startBtn');
-            const restartBtn = document.getElementById('restartBtn');
-            const victoryBtn = document.getElementById('victoryBtn');
-            const usernameInput = document.getElementById('username');
-            const finalScoreEl = document.getElementById('final-score');
-            const victoryScoreEl = document.getElementById('victory-score');
-            const uiScore = document.getElementById('score');
-            const uiStage = document.getElementById('stage-ui');
-            const warningMsg = document.getElementById('warning-msg');
-            const stageMsg = document.getElementById('stage-msg');
-            const itemLogContainer = document.getElementById('item-log-container');
-
-            let isGameRunning = false;
-            let currentUsername = "Unknown"; 
-            let now, then, elapsed;
-            const fps = 60;
-            const fpsInterval = 1000 / fps;
-
-            const ITEM_DURATION = 10000; 
-
-            loadOnlineRanking();
-
-            startBtn.onclick = () => checkNameAndStart();
-            restartBtn.onclick = () => { gameOverScreen.style.display = 'none'; startGame(); };
-            victoryBtn.onclick = () => { victoryScreen.style.display = 'none'; startGame(); };
-
-            function checkNameAndStart() {
-                const name = usernameInput.value.trim();
-                if (name === "") { alert("닉네임을 입력해주세요!"); return; }
-                currentUsername = name;
-                startScreen.style.display = 'none';
-                initAudio();
-                startGame();
-            }
-
-            let audioCtx;
-            function initAudio() {
-                if (!audioCtx) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    audioCtx = new AudioContext();
-                }
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-            }
-
-            function playSound(type) {
-                if (!audioCtx) return;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                const now = audioCtx.currentTime;
-
-                if (type === 'shoot') {
-                    osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1);
-                } else if (type === 'explosion') {
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
-                } else if (type === 'boss_hit') {
-                    osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1);
-                } else if (type === 'boss_die') {
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(50, now + 1.5); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.001, now + 1.5); osc.start(now); osc.stop(now + 1.5);
-                } else if (type === 'powerup') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3);
-                } else if (type === 'shield_break') { 
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.5); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(now); osc.stop(now + 0.5);
-                } else if (type === 'bomb') { 
-                    osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(1000, now + 0.5); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(now); osc.stop(now + 0.5);
-                } else if (type === 'gameover') {
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(10, now + 1.0); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.001, now + 1.0); osc.start(now); osc.stop(now + 1.0);
-                } else if (type === 'victory') {
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2); osc.frequency.linearRampToValueAtTime(1200, now + 0.5); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 2.0); osc.start(now); osc.stop(now + 2.0);
-                }
-            }
-
-            const playerSprite = [[0,0,0,1,0,0,0], [0,0,1,1,1,0,0], [0,1,1,0,1,1,0], [1,1,1,1,1,1,1], [1,0,1,1,1,0,1], [1,0,0,1,0,0,1]];
-            const enemySprite = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
-            const bossSprite = [[0,0,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1],[1,0,1,1,1,1,1,0,1],[0,0,1,0,0,0,1,0,0],[0,1,1,0,0,0,1,1,0]];
-            const itemSprites = {
-                'power': [[1,1,1,1,0],[1,0,0,1,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0]], 
-                'speed': [[0,1,1,1,0],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[1,1,1,0,0]], 
-                'shield':[[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1]], 
-                'bomb':  [[1,1,1,1,0],[1,0,0,1,0],[1,1,1,0,0],[1,0,0,1,0],[1,1,1,1,0]]  
-            };
-
-            function drawPixelSprite(sprite, x, y, color, pixelSize) {
-                ctx.fillStyle = color;
-                for(let r=0; r<sprite.length; r++) {
-                    for(let c=0; c<sprite[r].length; c++) {
-                        if(sprite[r][c] === 1) ctx.fillRect(x + c*pixelSize, y + r*pixelSize, pixelSize, pixelSize);
-                    }
-                }
-            }
-
-            let score = 0; let stage = 1; const pixelSize = 5;
+            if(startShield) { addItemLog("💖 후원 감사: 쉴드 시작!", "#ff4081"); }
             
-            let player = { 
-                x: 180, y: 500, width: 35, height: 30, 
-                speed: 5, powerLevel: 1, hasShield: false,
-                powerTime: 0, speedTime: 0, shieldTime: 0, invincible: 0
-            };
-            
-            let boss = { active: false, x: 0, y: -100, width: 90, height: 70, hp: 0, maxHp: 50, dir: 1 };
-            let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
-            let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
-            let lastTouchX = null, lastTouchY = null;
+            bullets = []; bossBullets = []; enemies = []; items = []; particles = []; keys = {};
+            boss.active = false; boss.y = -100;
+            warningMsg.style.display = 'none'; itemLogContainer.innerHTML = "";
+            isGameRunning = true; showStageTitle(1); then = Date.now(); gameLoop();
+        }
 
-            for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*3+0.5 });
-
-            window.addEventListener('keydown', (e) => keys[e.code] = true);
-            window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-            canvas.addEventListener('touchstart', (e) => {
-                if(!isGameRunning) return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                lastTouchX = touch.clientX; lastTouchY = touch.clientY;
-            }, { passive: false });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if(!isGameRunning) return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width; 
-                const scaleY = canvas.height / rect.height;
-                
-                if(lastTouchX === null || lastTouchY === null) { lastTouchX = touch.clientX; lastTouchY = touch.clientY; return; }
-
-                let deltaX = (touch.clientX - lastTouchX) * scaleX;
-                let deltaY = (touch.clientY - lastTouchY) * scaleY;
-                
-                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + deltaX));
-                player.y = Math.max(0, Math.min(canvas.height - player.height, player.y + deltaY));
-
-                lastTouchX = touch.clientX; lastTouchY = touch.clientY;
-            }, { passive: false });
-
-            canvas.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
-
-            function createExplosion(x, y, color, count = 15) {
-                for(let i=0; i<count; i++) {
-                    particles.push({ x: x, y: y, dx: (Math.random() - 0.5) * 8, dy: (Math.random() - 0.5) * 8, size: Math.random() * 4 + 2, life: 1.0, color: color });
-                }
-            }
-
-            function showItemPopup(text, x, y, color) {
-                const popup = document.createElement('div');
-                popup.className = 'item-popup';
-                popup.innerText = text;
-                popup.style.left = (canvas.offsetLeft + x) + 'px';
-                popup.style.top = (canvas.offsetTop + y) + 'px';
-                popup.style.color = color;
-                document.body.appendChild(popup);
-                setTimeout(() => popup.remove(), 1000);
-            }
-
-            function addItemLog(text, color) {
-                const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                logEntry.innerText = text;
-                logEntry.style.color = color;
-                itemLogContainer.prepend(logEntry); 
-                
-                if (itemLogContainer.children.length > 5) {
-                    itemLogContainer.removeChild(itemLogContainer.lastChild);
-                }
-            }
-
-            function showStageTitle(num) {
-                stageMsg.innerText = num === 4 ? "FINAL STAGE" : "STAGE " + num;
-                stageMsg.style.display = 'block';
-                stageMsg.style.animation = 'none';
-                stageMsg.offsetHeight; 
-                stageMsg.style.animation = 'fadeOut 3s forwards';
-            }
-
-            function startGame() {
-                score = 0; stage = 1;
-                uiScore.innerText = score;
-                uiStage.innerText = "STAGE 1";
-                player = { 
-                    x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, 
-                    speed: 5, powerLevel: 1, hasShield: false,
-                    powerTime: 0, speedTime: 0, shieldTime: 0, invincible: 0
-                };
-                bullets = []; bossBullets = []; enemies = []; items = []; particles = []; keys = {};
-                boss.active = false; boss.y = -100;
-                warningMsg.style.display = 'none';
-                itemLogContainer.innerHTML = "";
-                isGameRunning = true;
-                showStageTitle(1); 
-                then = Date.now();
-                gameLoop();
-            }
-
-            function hitPlayer() {
-                if (Date.now() < player.invincible) return;
-
-                if (player.hasShield) {
-                    player.hasShield = false;
-                    player.invincible = Date.now() + 1500; 
-                    playSound('shield_break');
-                    createExplosion(player.x + player.width/2, player.y + player.height/2, '#00ff00', 10);
-                    showItemPopup("SHIELD BROKEN!", player.x, player.y, '#00ff00');
-                    addItemLog("🛡️ 쉴드 파괴됨! (무적)", "#ff5252"); 
-                } else {
-                    triggerGameOver();
-                }
-            }
-
-            function triggerGameOver() {
-                isGameRunning = false;
-                createExplosion(player.x + player.width/2, player.y + player.height/2, '#00e5ff');
-                playSound('gameover');
-                saveScoreToOnline(currentUsername, score);
-                setTimeout(() => {
-                    cancelAnimationFrame(animationId);
-                    finalScoreEl.innerText = "SCORE: " + score;
-                    loadOnlineRanking();
-                    gameOverScreen.style.display = 'flex';
+        function hitPlayer() {
+            if(Date.now() < player.invincible) return;
+            if(player.hasShield) {
+                player.hasShield = false; player.invincible = Date.now() + 1500;
+                playSound('shield_break'); createExplosion(player.x+player.width/2, player.y+player.height/2, '#00ff00', 10);
+                addItemLog("🛡️ 쉴드 파괴됨! (무적)", "#ff5252");
+            } else {
+                isGameRunning = false; createExplosion(player.x+player.width/2, player.y+player.height/2, '#00ffff');
+                saveScoreToOnline(currentUsername, score); 
+                setTimeout(() => { 
+                    cancelAnimationFrame(animationId); 
+                    document.getElementById('final-score').innerText = "SCORE: " + score;
+                    loadOnlineRanking(); 
+                    gameOverScreen.style.display = 'flex'; 
                 }, 1000);
             }
+        }
 
-            function triggerVictory() {
-                isGameRunning = false;
-                for(let i=0; i<15; i++) {
-                    setTimeout(() => createExplosion(Math.random()*canvas.width, Math.random()*canvas.height, ['#f00','#0f0','#00f','#ff0'][i%4], 30), i*200);
-                }
-                playSound('victory');
-                saveScoreToOnline(currentUsername, score);
-                setTimeout(() => {
-                    cancelAnimationFrame(animationId);
-                    victoryScoreEl.innerText = "FINAL SCORE: " + score;
-                    loadOnlineRanking();
-                    victoryScreen.style.display = 'flex';
-                }, 2000);
-            }
-
-            function gameLoop() {
-                animationId = requestAnimationFrame(gameLoop);
-                now = Date.now();
-                elapsed = now - then;
-                if (elapsed > fpsInterval) {
-                    then = now - (elapsed % fpsInterval);
-                    update();
-                    draw();
-                }
-            }
-
-            function update() {
-                stars.forEach(star => {
-                    star.y += star.speed;
-                    if (star.y > canvas.height) { star.y = 0; star.x = Math.random()*canvas.width; }
-                });
-                particles = particles.filter(p => {
-                    p.x += p.dx; p.y += p.dy; p.life -= 0.04; return p.life > 0;
-                });
-
-                if (!isGameRunning) return;
-
-                let currentTs = Date.now();
-
-                if (player.powerLevel > 1 && currentTs > player.powerTime) {
-                    player.powerLevel--;
-                    player.powerTime = currentTs + ITEM_DURATION; 
-                    addItemLog(`🔻 POWER DOWN (Lv.${player.powerLevel})`, '#888');
-                }
-                if (player.speed > 5 && currentTs > player.speedTime) {
-                    player.speed = 5;
-                    addItemLog("📉 SPEED NORMAL", '#888');
-                }
-                if (player.hasShield && currentTs > player.shieldTime) {
-                    player.hasShield = false;
-                    addItemLog("🛡️ SHIELD EXPIRED", '#888');
-                }
-
-                if (keys['ArrowLeft']) player.x = Math.max(0, player.x - player.speed);
-                if (keys['ArrowRight']) player.x = Math.min(canvas.width - player.width, player.x + player.speed);
-                if (keys['ArrowUp']) player.y = Math.max(0, player.y - player.speed);
-                if (keys['ArrowDown']) player.y = Math.min(canvas.height - player.height, player.y + player.speed);
-
-                const currentTime = Date.now();
-                if (currentTime - lastShotTime > SHOT_DELAY) {
-                    if (player.powerLevel === 1) {
-                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
-                    } else if (player.powerLevel === 2) {
-                        bullets.push({ x: player.x + 10, y: player.y, width: 4, height: 10, dx: -1, isDead: false });
-                        bullets.push({ x: player.x + 20, y: player.y, width: 4, height: 10, dx: 1, isDead: false });
-                    } else if (player.powerLevel >= 3) {
-                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 0, isDead: false });
-                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: -3, isDead: false });
-                        bullets.push({ x: player.x + 15, y: player.y, width: 4, height: 10, dx: 3, isDead: false });
-                    }
-                    playSound('shoot'); lastShotTime = currentTime;
-                }
-
-                let bossThreshold = 5000; let bossMaxHp = 50; let rewardScore = 20000;
-                if (stage === 1) { bossThreshold = 5000; bossMaxHp = 50; rewardScore = 20000; }
-                else if (stage === 2) { bossThreshold = 30000; bossMaxHp = 100; rewardScore = 50000; }
-                else if (stage === 3) { bossThreshold = 100000; bossMaxHp = 200; rewardScore = 100000; }
-                else if (stage === 4) { bossThreshold = 250000; bossMaxHp = 500; rewardScore = 300000; }
-
-                if (score >= bossThreshold && !boss.active && boss.y === -100) {
-                    boss.active = true; boss.hp = bossMaxHp; boss.maxHp = bossMaxHp; boss.y = -70; boss.x = canvas.width / 2 - boss.width / 2;
-                    warningMsg.style.display = 'block'; setTimeout(() => warningMsg.style.display = 'none', 3000);
-                }
-
-                if (boss.active) {
-                    if (boss.y < 50) boss.y += 1; 
-                    else {
-                        let moveSpeed = (stage >= 3) ? 3 : 2;
-                        boss.x += moveSpeed * boss.dir;
-                        if (boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1;
-                        
-                        let shootProb = 0.03 + (stage * 0.01); 
-                        if (Math.random() < shootProb) {
-                            let bossCenterX = boss.x + boss.width / 2;
-                            let bossCenterY = boss.y + boss.height;
-                            let angle = Math.atan2(player.y - bossCenterY, player.x - bossCenterX);
-                            let bulletSpeed = (stage === 4) ? 15 : (5 + stage); 
-
-                            if (stage === 3) {
-                                for(let a = -0.3; a <= 0.3; a += 0.3) {
-                                    bossBullets.push({ x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, dx: Math.cos(angle + a) * bulletSpeed, dy: Math.sin(angle + a) * bulletSpeed });
-                                }
-                            } else {
-                                bossBullets.push({ x: bossCenterX - 5, y: bossCenterY, width: 10, height: 20, dx: Math.cos(angle) * bulletSpeed, dy: Math.sin(angle) * bulletSpeed });
-                            }
-                        }
-                    }
-                    if (player.x < boss.x + boss.width && player.x + player.width > boss.x &&
-                        player.y < boss.y + boss.height && player.y + player.height > boss.y) hitPlayer();
-                } else {
-                    let spawnRate = 0.03 + (stage * 0.01);
-                    if (Math.random() < spawnRate) {
-                        let dx = 0;
-                        if(Math.random() < 0.3) dx = (player.x - (Math.random() * canvas.width)) * 0.01;
-                        enemies.push({ x: Math.random() * (canvas.width - 35), y: -30, width: 35, height: 30, dx: dx, isDead: false });
-                    }
-                }
-
-                bullets.forEach(b => { b.y -= 8; b.x += (b.dx || 0); if (b.y < 0 || b.x < 0 || b.x > canvas.width) b.isDead = true; });
-                
-                for (let i = 0; i < bullets.length; i++) {
-                    let b = bullets[i]; if (b.isDead) continue; 
-                    if (boss.active && b.x < boss.x + boss.width && b.x + b.width > boss.x && b.y < boss.y + boss.height && b.y + b.height > boss.y) {
-                        b.isDead = true; boss.hp--; createExplosion(b.x, b.y, '#e040fb', 3); playSound('boss_hit');
-                        
-                        // ★ 보스 타격 시 아이템 드랍 (5% 확률) ★
-                        if (Math.random() < 0.05) {
-                            let r = Math.random();
-                            let type = 'power';
-                            if (r < 0.1) type = 'bomb'; 
-                            else if (r < 0.3) type = 'shield'; 
-                            else if (r < 0.6) type = 'speed'; 
-                            else type = 'power'; 
-                            
-                            items.push({ x: boss.x + boss.width/2 - 12, y: boss.y + boss.height/2, width: 25, height: 25, type: type, isDead: false });
-                        }
-
-                        if (boss.hp <= 0) {
-                            boss.active = false; boss.y = -100; 
-                            score += rewardScore; uiScore.innerText = score; 
-                            createExplosion(boss.x + boss.width/2, boss.y + boss.height/2, '#e040fb', 50); playSound('boss_die');
-                            enemies = []; bossBullets = []; bullets = []; 
-                            if (stage < 4) { stage++; uiStage.innerText = "STAGE " + stage; showStageTitle(stage); } 
-                            else { triggerVictory(); }
-                        }
-                        continue;
-                    }
-                    for (let j = 0; j < enemies.length; j++) {
-                        let e = enemies[j]; if (e.isDead) continue; 
-                        if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
-                            b.isDead = true; e.isDead = true; createExplosion(e.x + e.width/2, e.y + e.height/2, '#ff5252');
-                            
-                            if (Math.random() < 0.15) {
-                                let r = Math.random();
-                                let type = 'power';
-                                if (r < 0.1) type = 'bomb'; 
-                                else if (r < 0.3) type = 'shield'; 
-                                else if (r < 0.6) type = 'speed'; 
-                                else type = 'power'; 
-                                
-                                items.push({ x: e.x, y: e.y, width: 25, height: 25, type: type, isDead: false });
-                            }
-                            score += 100; uiScore.innerText = score; playSound('explosion'); break; 
-                        }
-                    }
-                }
-                bullets = bullets.filter(b => !b.isDead);
-                enemies = enemies.filter(e => !e.isDead);
-
-                bossBullets.forEach(bb => {
-                    bb.x += bb.dx; bb.y += bb.dy;
-                    if (bb.y > canvas.height || bb.x < 0 || bb.x > canvas.width) bb.isDead = true;
-                    if (player.x < bb.x + bb.width && player.x + player.width > bb.x && player.y < bb.y + bb.height && player.y + player.height > bb.y) {
-                        bb.isDead = true; hitPlayer();
-                    }
-                });
-                bossBullets = bossBullets.filter(bb => !bb.isDead);
-
-                enemies.forEach(e => {
-                    e.y += (3 + stage); e.x += (e.dx || 0);
-                    if (e.y > canvas.height) e.isDead = true;
-                    if (!e.isDead && player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
-                        e.isDead = true; hitPlayer();
-                    }
-                });
-
-                items.forEach(item => {
-                    item.y += 2;
-                    if (!item.isDead && player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {
-                        item.isDead = true; 
-                        let now = Date.now();
-                        if (item.type === 'power') {
-                            if (player.powerLevel < 3) player.powerLevel++; 
-                            player.powerTime = now + ITEM_DURATION; 
-                            score += 500;
-                            showItemPopup("POWER UP!", player.x, player.y, '#ffff00');
-                            addItemLog(`⚡ POWER UP (Lv.${player.powerLevel})`, '#ffff00');
-                        } else if (item.type === 'speed') {
-                            if(player.speed < 12) player.speed += 2; 
-                            player.speedTime = now + ITEM_DURATION; 
-                            score += 500;
-                            showItemPopup("SPEED UP!", player.x, player.y, '#00e5ff');
-                            addItemLog("💨 SPEED UP", '#00e5ff');
-                        } else if (item.type === 'shield') {
-                            player.hasShield = true;
-                            player.shieldTime = now + ITEM_DURATION; 
-                            score += 500;
-                            showItemPopup("SHIELD ON!", player.x, player.y, '#00ff00');
-                            addItemLog("🛡️ SHIELD EQUIPPED", '#00ff00');
-                        } else if (item.type === 'bomb') {
-                            enemies = []; bossBullets = []; 
-                            if(boss.active) boss.hp -= 20; 
-                            createExplosion(canvas.width/2, canvas.height/2, '#ff0000', 50); 
-                            score += 1000;
-                            playSound('bomb');
-                            showItemPopup("BOOM!", player.x, player.y, '#ff0000');
-                            addItemLog("💣 NUCLEAR BOMB!", '#ff0000');
-                        }
-                        uiScore.innerText = score; 
-                        if(item.type !== 'bomb') playSound('powerup');
-                    }
-                    if (item.y > canvas.height) item.isDead = true;
-                });
-                items = items.filter(item => !item.isDead);
-            }
-
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'white'; stars.forEach(star => ctx.fillRect(star.x, star.y, star.size, star.size));
-                particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
-                ctx.globalAlpha = 1.0;
-                
-                items.forEach(item => {
-                    let color = '#ffff00'; 
-                    if(item.type === 'speed') color = '#00e5ff';
-                    if(item.type === 'shield') color = '#00ff00';
-                    if(item.type === 'bomb') color = '#ff0000';
-                    drawPixelSprite(itemSprites[item.type], item.x, item.y, color, 5);
-                });
-
-                if (isGameRunning) {
-                    if (player.invincible > Date.now()) {
-                        if (Date.now() % 200 < 100) return; 
-                    }
-
-                    drawPixelSprite(playerSprite, player.x, player.y, '#00e5ff', pixelSize);
-                    if(player.hasShield) {
-                        ctx.strokeStyle = '#00ff00';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(player.x + player.width/2, player.y + player.height/2, 25, 0, Math.PI*2);
-                        ctx.stroke();
-                    }
-                }
-
-                if (boss.active) {
-                    let bossColor = '#e040fb'; 
-                    if (stage === 2) bossColor = '#00e5ff'; 
-                    if (stage === 3) bossColor = '#ffff00'; 
-                    if (stage === 4) bossColor = '#ff0000'; 
-                    drawPixelSprite(bossSprite, boss.x, boss.y, bossColor, 10);
-                    ctx.fillStyle = 'red'; ctx.fillRect(boss.x, boss.y - 15, boss.width, 10);
-                    ctx.fillStyle = '#00ff00'; ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.hp / boss.maxHp), 10);
-                    ctx.fillStyle = bossColor;
-                } else {
-                    ctx.fillStyle = '#e040fb'; 
-                }
-                
-                bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
-                enemies.forEach(e => drawPixelSprite(enemySprite, e.x, e.y, '#ff5252', pixelSize));
-                ctx.fillStyle = '#ffeb3b'; bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
-            }
+        donateBtn.onclick = () => {
+            window.open('https://www.buymeacoffee.com/'); 
+            alert("후원 페이지로 이동합니다! (테스트: 이번 판 쉴드 보너스 적용)");
+            startShield = true; 
         };
+
+        startBtn.onclick = () => { 
+            currentUsername = usernameInput.value.trim() || "Player"; 
+            startScreen.style.display='none'; 
+            initAudio(); 
+            startGame(); 
+        };
+        restartBtn.onclick = () => { gameOverScreen.style.display='none'; startGame(); };
+        victoryBtn.onclick = () => { victoryScreen.style.display='none'; startGame(); };
+
+        function gameLoop() {
+            animationId = requestAnimationFrame(gameLoop);
+            now = Date.now(); elapsed = now - then;
+            if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); update(); draw(); }
+        }
+
+        function update() {
+            if(!isGameRunning) return;
+            if(keys['ArrowLeft']) player.x = Math.max(0, player.x - player.speed);
+            if(keys['ArrowRight']) player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+            if(keys['ArrowUp']) player.y = Math.max(0, player.y - player.speed);
+            if(keys['ArrowDown']) player.y = Math.min(canvas.height - player.height, player.y + player.speed);
+
+            if(now - lastShotTime > SHOT_DELAY) {
+                let bx = player.x + player.width/2 - 2; 
+                if(player.powerLevel===1) spawnBullet(bx, player.y, 0, -8, 4, 10);
+                else if(player.powerLevel===2) { spawnBullet(bx-10, player.y, -1, -8, 4, 10); spawnBullet(bx+10, player.y, 1, -8, 4, 10); }
+                else { spawnBullet(bx, player.y, 0, -8, 4, 10); spawnBullet(bx, player.y, -3, -8, 4, 10); spawnBullet(bx, player.y, 3, -8, 4, 10); }
+                playSound('shoot'); lastShotTime = now;
+            }
+
+            if(player.powerLevel > 1 && now > player.powerTime) { player.powerLevel--; player.powerTime = now + ITEM_DURATION; addItemLog(`🔻 POWER DOWN`, '#888'); }
+            if(player.speed > 5 && now > player.speedTime) { player.speed = 5; addItemLog("📉 SPEED NORMAL", '#888'); }
+            if(player.hasShield && now > player.shieldTime) { player.hasShield = false; addItemLog("🛡️ SHIELD EXPIRED", '#888'); }
+
+            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[4];
+
+            if(!boss.active) {
+                if(score >= currentStageData.triggerScore) { 
+                    boss.active = true; boss.hp = currentStageData.bossHp; boss.maxHp = boss.hp; boss.y = -70; boss.x = canvas.width/2 - 45;
+                    warningMsg.style.display = 'block'; setTimeout(()=>warningMsg.style.display='none', 3000);
+                } else if(Math.random() < 0.03 + (stage*0.01)) { 
+                    spawnEnemy(Math.random()*(canvas.width-35), -30);
+                }
+            }
+
+            if(boss.active) {
+                if(boss.y < 50) boss.y++;
+                else {
+                    boss.x += 2 * boss.dir; if(boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1;
+                    if(Math.random() < 0.03) { 
+                        let angle = Math.atan2(player.y - (boss.y+boss.height), player.x - (boss.x+boss.width/2));
+                        let speed = stage === 4 ? 10 : 5;
+                        if(stage === 3) {
+                            bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed});
+                            bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle-0.3)*speed, dy:Math.sin(angle-0.3)*speed});
+                            bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle+0.3)*speed, dy:Math.sin(angle+0.3)*speed});
+                        } else {
+                            bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed});
+                        }
+                    }
+                }
+                if(player.x < boss.x + boss.width && player.x + player.width > boss.x && player.y < boss.y + boss.height && player.y + player.height > boss.y) hitPlayer();
+            }
+
+            for(let i=bullets.length-1; i>=0; i--) {
+                let b = bullets[i];
+                b.y += b.dy; b.x += b.dx;
+                if(b.y < 0 || b.x < 0 || b.x > canvas.width) {
+                    bulletPool.push(b);
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                if(boss.active && b.x<boss.x+boss.width && b.x+b.width>boss.x && b.y<boss.y+boss.height && b.y+b.height>boss.y) {
+                    bulletPool.push(b); bullets.splice(i, 1);
+                    boss.hp--; playSound('boss_hit'); createExplosion(b.x, b.y, '#fff', 3);
+                    if(Math.random()<0.05) items.push({x:boss.x+45, y:boss.y+70, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false});
+                    if(boss.hp<=0) { 
+                        boss.active=false; score += currentStageData.reward; uiScore.innerText=score; 
+                        playSound('boss_die'); createExplosion(boss.x+45, boss.y+35, '#e040fb', 50);
+                        enemies.forEach(e => enemyPool.push(e)); enemies=[]; 
+                        bossBullets=[]; 
+                        bullets.forEach(b => bulletPool.push(b)); bullets=[];
+                        if(stage<4) { stage++; showStageTitle(stage); } 
+                        else { 
+                            isGameRunning=false; saveScoreToOnline(currentUsername, score);
+                            document.getElementById('victory-score').innerText = "SCORE: " + score;
+                            loadOnlineRanking(); victoryScreen.style.display='flex'; 
+                        }
+                        break; 
+                    }
+                    continue;
+                }
+                
+                let hit = false;
+                for(let j=enemies.length-1; j>=0; j--) {
+                    let e = enemies[j];
+                    if(b.x<e.x+e.width && b.x+b.width>e.x && b.y<e.y+e.height && b.y+b.height>e.y) {
+                        hit = true;
+                        enemyPool.push(e); enemies.splice(j, 1);
+                        score+=100; uiScore.innerText=score; playSound('explosion'); createExplosion(e.x+17, e.y+15, '#ff5252');
+                        if(Math.random()<0.15) items.push({x:e.x, y:e.y, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false});
+                        break;
+                    }
+                }
+                if(hit) {
+                    bulletPool.push(b); bullets.splice(i, 1);
+                }
+            }
+
+            for(let i=enemies.length-1; i>=0; i--) {
+                let e = enemies[i];
+                e.y += (3+stage);
+                if(e.y > canvas.height) {
+                    enemyPool.push(e); enemies.splice(i, 1);
+                    continue;
+                }
+                // 플레이어와 적 충돌 체크
+                if(player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
+                    enemyPool.push(e); enemies.splice(i, 1);
+                    hitPlayer();
+                }
+            }
+
+            bossBullets.forEach(bb => { bb.x+=bb.dx; bb.y+=bb.dy; if(bb.y>canvas.height) bb.isDead=true; 
+                if(player.x < bb.x + bb.width && player.x + player.width > bb.x && player.y < bb.y + bb.height && player.y + player.height > bb.y) { bb.isDead=true; hitPlayer(); }
+            });
+            bossBullets = bossBullets.filter(bb => !bb.isDead);
+
+            items.forEach(item => {
+                item.y+=2; if(item.y>canvas.height) item.isDead=true;
+                if(!item.isDead && player.x < item.x+item.width && player.x+player.width > item.x && player.y < item.y+item.height && player.y+player.height > item.y) {
+                    item.isDead=true; score+=500; uiScore.innerText=score;
+                    if(item.type==='power'){ if(player.powerLevel<3) player.powerLevel++; player.powerTime=now+ITEM_DURATION; showItemPopup("POWER UP!", player.x, player.y, '#ff0'); addItemLog(`⚡ POWER UP`, '#ff0'); }
+                    else if(item.type==='speed'){ player.speed=9; player.speedTime=now+ITEM_DURATION; showItemPopup("SPEED UP!", player.x, player.y, '#0ff'); addItemLog("💨 SPEED UP", '#0ff'); }
+                    else if(item.type==='shield'){ player.hasShield=true; player.shieldTime=now+ITEM_DURATION; showItemPopup("SHIELD!", player.x, player.y, '#0f0'); addItemLog("🛡️ SHIELD", '#0f0'); }
+                    else if(item.type==='bomb'){ 
+                        enemies.forEach(e => enemyPool.push(e)); enemies=[]; 
+                        bossBullets=[]; 
+                        if(boss.active) boss.hp-=20; 
+                        createExplosion(200,300,'#f00',50); showItemPopup("BOOM!", player.x, player.y, '#f00'); playSound('explosion'); 
+                    }
+                    if(item.type!=='bomb') playSound('powerup');
+                }
+            });
+            items = items.filter(i => !i.isDead);
+            
+            stars.forEach(s => { s.y+=s.speed; if(s.y>canvas.height) s.y=0; });
+
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.dx; p.y += p.dy; p.life -= 0.1;
+                if(p.life <= 0) {
+                    particlePool.push(p);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white'; stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
+            particles.forEach(p => { ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
+            ctx.globalAlpha=1.0;
+
+            items.forEach(item => { drawPixelSprite(itemSprites[item.type], item.x, item.y, 5); });
+
+            if(isGameRunning) {
+                if(player.invincible > Date.now() && Date.now()%200 < 100) {} 
+                else {
+                    drawPixelSprite(basicPlaneSprite, player.x, player.y, 5); // 기본 기체 그리기
+                    if(player.hasShield) { ctx.strokeStyle='#0f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x+player.width/2, player.y+player.height/2, 30, 0, Math.PI*2); ctx.stroke(); }
+                }
+            }
+
+            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[4];
+            const stageColor = currentStageData.color;
+
+            enemies.forEach(e => drawPixelSprite(enemySpriteMono, e.x, e.y, 5, stageColor));
+
+            if(boss.active) {
+                drawPixelSprite(bossSpriteMono, boss.x, boss.y, 10, stageColor);
+                ctx.fillStyle='red'; ctx.fillRect(boss.x, boss.y-15, boss.width, 10);
+                ctx.fillStyle='#0f0'; ctx.fillRect(boss.x, boss.y-15, boss.width*(boss.hp/boss.maxHp), 10);
+            }
+
+            // 🟡 미사일 색상 변경: 노란색 (#ffff00)
+            ctx.fillStyle = '#ffff00'; 
+            bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+            
+            ctx.fillStyle = '#e040fb';
+            bossBullets.forEach(bb => ctx.fillRect(bb.x, bb.y, bb.width, bb.height));
+        }
+
+        loadOnlineRanking();
     </script>
 </body>
 </html>
