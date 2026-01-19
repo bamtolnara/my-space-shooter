@@ -33,7 +33,7 @@
         .plane-select-btn.locked { background-color: #222 !important; color: #555; cursor: not-allowed; border: 1px solid #444; }
 
         .ranking-box { background: #111; border: 2px solid #444; padding: 15px; width: 80%; max-width: 300px; margin-bottom: 15px; text-align: left; }
-        .ranking-scroll { max-height: 200px; overflow-y: auto; }
+        .ranking-scroll { max-height: 150px; overflow-y: auto; }
         .rank-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
         .rank-1 { color: #ffd700; font-weight: bold; font-size: 16px; text-shadow: 0 0 5px #ffd700; } 
         .rank-2 { color: #c0c0c0; font-weight: bold; } 
@@ -109,7 +109,7 @@
 
     <script>
         // =========================================================
-        // 🔥 [2] 파이어베이스 설정
+        // 🔥 [2] 파이어베이스 설정 (고객님 키값 적용 완료!)
         // =========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE",
@@ -127,17 +127,12 @@
         try { firebase.initializeApp(firebaseConfig); db = firebase.database(); isDbConnected = true; console.log("DB 연결 성공"); } catch (e) { console.log("DB 연결 오류:", e); }
         function saveScoreToOnline(name, score) { if (!isDbConnected) return; db.ref('scores').push({ username: name, score: score }); }
         
-        // 👑 랭킹 로드 함수 (시작화면:3명, 종료화면:10명)
+        // 👑 랭킹 로드 함수
         function loadOnlineRanking() {
             if (!isDbConnected) return;
             
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
-                const data = snapshot.val(); 
-                let rankingArr = []; 
-                if (data) { 
-                    for (let key in data) rankingArr.push(data[key]); 
-                    rankingArr.sort((a, b) => b.score - a.score); 
-                }
+                const data = snapshot.val(); let rankingArr = []; if (data) { for (let key in data) rankingArr.push(data[key]); rankingArr.sort((a, b) => b.score - a.score); }
                 
                 // Top 3 생성
                 let html3 = "";
@@ -190,39 +185,29 @@
 
         const bulletPool = []; const enemyPool = []; const particlePool = []; 
 
+        // ★★★ 난이도표 파일 데이터 완벽 반영 ★★★
         const STAGE_DATA = {
-            1: { triggerScore: 5000,   bossHp: 50,  reward: 20000,  color: '#ff5252' }, 
-            2: { triggerScore: 30000,  bossHp: 100, reward: 50000,  color: '#00e5ff' }, 
-            3: { triggerScore: 100000, bossHp: 200, reward: 100000, color: '#ffff00' }, 
-            4: { triggerScore: 250000, bossHp: 500, reward: 300000, color: '#ff0000' }  
+            1: { triggerScore: 5000,   bossHp: 50,   reward: 35000,  color: '#ff5252', bossType: 'MK1' }, // PDF: 5000 / 35000
+            2: { triggerScore: 45000,  bossHp: 100,  reward: 50000,  color: '#00e5ff', bossType: 'MK1' }, // PDF: 45000 / 50000
+            3: { triggerScore: 100000, bossHp: 200,  reward: 150000, color: '#ffff00', bossType: 'MK2' }, // PDF: 100000 / 150000
+            4: { triggerScore: 260000, bossHp: 500,  reward: 260000, color: '#d50000', bossType: 'MK2' }, // PDF: 260000 / 260000
+            5: { triggerScore: 530000, bossHp: 1000, reward: 300000, color: '#ff9800', bossType: 'MK3' }, // PDF: 530000 / 300000
+            6: { triggerScore: 840000, bossHp: 2000, reward: 400000, color: '#76ff03', bossType: 'MK3' }  // PDF: 840000 / 400000
+        };
+
+        // 보스 스프라이트
+        const BOSS_MODELS = {
+            'MK1': [ [0,0,0,0,1,1,1,0,0,0,0],[0,0,1,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1,1,1],[0,1,0,1,0,0,0,1,0,1,0],[0,1,0,0,0,0,0,0,0,1,0] ],
+            'MK2': [ [0,0,0,0,0,1,0,0,0,0,0],[0,0,0,1,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,1,1,1,0],[1,1,1,1,0,1,0,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1],[0,1,1,0,0,1,0,0,1,1,0],[0,0,1,0,0,0,0,0,1,0,0] ],
+            'MK3': [ [1,0,1,1,1,1,1,1,1,0,1],[1,1,1,1,1,1,1,1,1,1,1],[1,1,0,1,1,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1,1,1],[1,1,1,0,1,1,1,0,1,1,1],[0,1,1,1,1,1,1,1,1,1,0],[0,0,1,1,0,0,0,1,1,0,0] ]
         };
 
         const PLANES = [
-            {
-                name: "BASIC", color: '#b0bec5', speed: 5, reqScore: 0,
-                sprite: [[0,0,0,'#cfd8dc',0,0,0],[0,0,'#cfd8dc','#cfd8dc','#cfd8dc',0,0],[0,'#90a4ae','#cfd8dc','#00e5ff','#cfd8dc','#90a4ae',0],['#90a4ae','#90a4ae','#cfd8dc','#cfd8dc','#cfd8dc','#90a4ae','#90a4ae'],[0,'#eceff1','#455a64','#455a64','#455a64','#eceff1',0],[0,0,'#ff5722',0,'#ff5722',0,0]],
-                missile: { type: 'rect', color: '#ffff00', width: 4, height: 10, speed: -10 }
-            },
-            {
-                name: "SPEED", color: '#00e5ff', speed: 8, reqScore: 100000,
-                sprite: [[0,0,0,'#81d4fa',0,0,0],[0,0,'#81d4fa','#00e5ff','#81d4fa',0,0],[0,'#4fc3f7','#00e5ff','#00e5ff','#00e5ff','#4fc3f7',0],['#4fc3f7','#00e5ff','#00e5ff','#e0f7fa','#00e5ff','#00e5ff','#4fc3f7'],[0,'#0288d1','#0288d1','#e0f7fa','#0288d1','#0288d1',0],[0,0,'#ff5722',0,'#ff5722',0,0]],
-                missile: { type: 'rect', color: '#00e5ff', width: 3, height: 15, speed: -14 }
-            },
-            {
-                name: "TANK", color: '#ff5252', speed: 4, reqScore: 200000,
-                sprite: [[0,0,'#e53935','#e53935','#e53935',0,0],[0,'#e53935','#ffcdd2','#ffcdd2','#ffcdd2','#e53935',0],['#c62828','#e53935','#ffcdd2','#ffcdd2','#ffcdd2','#e53935','#c62828'],['#c62828','#c62828','#e53935','#e53935','#e53935','#c62828','#c62828'],[0,'#b71c1c','#c62828',0,'#c62828','#b71c1c',0],[0,'#ff5722','#ff5722',0,'#ff5722','#ff5722',0]],
-                missile: { type: 'rect', color: '#ff5252', width: 8, height: 12, speed: -7 } 
-            },
-            {
-                name: "VIPER", color: '#76ff03', speed: 6, reqScore: 300000,
-                sprite: [[0,0,0,'#b2ff59',0,0,0],[0,0,'#76ff03','#76ff03','#76ff03',0,0],[0,'#64dd17','#76ff03','#ccff90','#76ff03','#64dd17',0],['#33691e','#64dd17','#76ff03','#ccff90','#76ff03','#64dd17','#33691e'],[0,'#33691e','#64dd17','#76ff03','#64dd17','#33691e',0],[0,0,'#76ff03',0,'#76ff03',0,0]],
-                missile: { type: 'rect', color: '#76ff03', width: 5, height: 10, speed: -10 } 
-            },
-            {
-                name: "VOID", color: '#e040fb', speed: 5, reqScore: 500000,
-                sprite: [[0,0,0,'#e1bee7',0,0,0],[0,0,'#ce93d8','#e040fb','#ce93d8',0,0],[0,'#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc',0],['#8e24aa','#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc','#8e24aa'],[0,'#6a1b9a','#8e24aa',0,'#8e24aa','#6a1b9a',0],[0,'#e040fb',0,0,0,'#e040fb',0]],
-                missile: { type: 'orb', color: '#e040fb', width: 6, height: 6, speed: -9 } 
-            }
+            { name: "BASIC", color: '#b0bec5', speed: 5, reqScore: 0, sprite: [[0,0,0,'#cfd8dc',0,0,0],[0,0,'#cfd8dc','#cfd8dc','#cfd8dc',0,0],[0,'#90a4ae','#cfd8dc','#00e5ff','#cfd8dc','#90a4ae',0],['#90a4ae','#90a4ae','#cfd8dc','#cfd8dc','#cfd8dc','#90a4ae','#90a4ae'],[0,'#eceff1','#455a64','#455a64','#455a64','#eceff1',0],[0,0,'#ff5722',0,'#ff5722',0,0]], missile: { type: 'rect', color: '#ffff00', width: 4, height: 10, speed: -10 } },
+            { name: "SPEED", color: '#00e5ff', speed: 8, reqScore: 100000, sprite: [[0,0,0,'#81d4fa',0,0,0],[0,0,'#81d4fa','#00e5ff','#81d4fa',0,0],[0,'#4fc3f7','#00e5ff','#00e5ff','#00e5ff','#4fc3f7',0],['#4fc3f7','#00e5ff','#00e5ff','#e0f7fa','#00e5ff','#00e5ff','#4fc3f7'],[0,'#0288d1','#0288d1','#e0f7fa','#0288d1','#0288d1',0],[0,0,'#ff5722',0,'#ff5722',0,0]], missile: { type: 'rect', color: '#00e5ff', width: 3, height: 15, speed: -14 } },
+            { name: "TANK", color: '#ff5252', speed: 4, reqScore: 200000, sprite: [[0,0,'#e53935','#e53935','#e53935',0,0],[0,'#e53935','#ffcdd2','#ffcdd2','#ffcdd2','#e53935',0],['#c62828','#e53935','#ffcdd2','#ffcdd2','#ffcdd2','#e53935','#c62828'],['#c62828','#c62828','#e53935','#e53935','#e53935','#c62828','#c62828'],[0,'#b71c1c','#c62828',0,'#c62828','#b71c1c',0],[0,'#ff5722','#ff5722',0,'#ff5722','#ff5722',0]], missile: { type: 'rect', color: '#ff5252', width: 8, height: 12, speed: -7 } },
+            { name: "VIPER", color: '#76ff03', speed: 6, reqScore: 300000, sprite: [[0,0,0,'#b2ff59',0,0,0],[0,0,'#76ff03','#76ff03','#76ff03',0,0],[0,'#64dd17','#76ff03','#ccff90','#76ff03','#64dd17',0],['#33691e','#64dd17','#76ff03','#ccff90','#76ff03','#64dd17','#33691e'],[0,'#33691e','#64dd17','#76ff03','#64dd17','#33691e',0],[0,0,'#76ff03',0,'#76ff03',0,0]], missile: { type: 'rect', color: '#76ff03', width: 5, height: 10, speed: -10 } },
+            { name: "VOID", color: '#e040fb', speed: 5, reqScore: 500000, sprite: [[0,0,0,'#e1bee7',0,0,0],[0,0,'#ce93d8','#e040fb','#ce93d8',0,0],[0,'#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc',0],['#8e24aa','#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc','#8e24aa'],[0,'#6a1b9a','#8e24aa',0,'#8e24aa','#6a1b9a',0],[0,'#e040fb',0,0,0,'#e040fb',0]], missile: { type: 'orb', color: '#e040fb', width: 6, height: 6, speed: -9 } }
         ];
 
         let unlockedPlanes = JSON.parse(localStorage.getItem('unlockedPlanes')) || [0];
@@ -232,7 +217,6 @@
             PLANES.forEach((plane, index) => {
                 const btn = document.createElement('button');
                 const isUnlocked = unlockedPlanes.includes(index);
-                
                 if (isUnlocked) {
                     btn.innerHTML = `${plane.name}<br><span style="font-size:9px;">READY</span>`;
                     btn.className = 'plane-select-btn';
@@ -243,7 +227,6 @@
                     btn.className = 'plane-select-btn locked';
                     btn.onclick = () => { alert(`🔒 [${plane.name}] 해금 조건: ${plane.reqScore.toLocaleString()}점 달성`); };
                 }
-                
                 if(index === selectedPlaneIndex) btn.classList.add('selected');
                 selectContainer.appendChild(btn);
             });
@@ -260,7 +243,6 @@
                     newUnlock = true;
                 }
             });
-            
             if (newUnlock) {
                 localStorage.setItem('unlockedPlanes', JSON.stringify(unlockedPlanes));
                 unlockMsg.innerHTML = `🎉 축하합니다!<br>[ ${unlockedNames.join(', ')} ] 해금 완료!`;
@@ -271,7 +253,6 @@
         }
 
         const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
-        const bossSpriteMono = [[0,0,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1],[1,0,1,1,1,1,1,0,1],[0,0,1,0,0,0,1,0,0],[0,1,1,0,0,0,1,1,0]];
         const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000';
         const itemSprites = { 'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]] };
 
@@ -287,7 +268,7 @@
         }
 
         let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: 0 };
-        let boss = { active: false, x: 0, y: -100, width: 90, height: 70, hp: 0, maxHp: 50, dir: 1 };
+        let boss = { active: false, x: 0, y: -100, width: 110, height: 70, hp: 0, maxHp: 50, dir: 1 };
         let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
         let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
         let lastTouchX = null, lastTouchY = null;
@@ -303,14 +284,7 @@
         function spawnBullet(x, y, dx, dy_offset) {
             const mData = PLANES[player.planeIndex].missile; 
             let b = bulletPool.length > 0 ? bulletPool.pop() : { };
-            b.x=x; b.y=y; 
-            b.dx=dx||0; 
-            b.dy = mData.speed + (dy_offset||0);
-            b.width = mData.width; 
-            b.height = mData.height;
-            b.color = mData.color; 
-            b.type = mData.type;   
-            b.isDead=false;
+            b.x=x; b.y=y; b.dx=dx||0; b.dy = mData.speed + (dy_offset||0); b.width = mData.width; b.height = mData.height; b.color = mData.color; b.type = mData.type; b.isDead=false;
             bullets.push(b);
         }
 
@@ -318,7 +292,7 @@
         function spawnEnemy(x, y) { let e = enemyPool.length > 0 ? enemyPool.pop() : { }; e.x=x; e.y=y; e.width=35; e.height=30; e.isDead=false; enemies.push(e); }
         function showItemPopup(text, x, y, color) { const popup = document.createElement('div'); popup.className = 'item-popup'; popup.innerText = text; popup.style.left = (canvas.offsetLeft + x) + 'px'; popup.style.top = (canvas.offsetTop + y) + 'px'; popup.style.color = color; popup.style.position='absolute'; popup.style.fontWeight='bold'; document.body.appendChild(popup); setTimeout(() => popup.remove(), 1000); }
         function addItemLog(text, color) { const log = document.createElement('div'); log.className = 'log-entry'; log.innerText = text; log.style.color = color; itemLogContainer.prepend(log); if(itemLogContainer.children.length>5) itemLogContainer.lastChild.remove(); }
-        function showStageTitle(num) { stageMsg.innerText = num === 4 ? "FINAL STAGE" : "STAGE " + num; stageMsg.style.display = 'block'; stageMsg.style.animation = 'none'; stageMsg.offsetHeight; stageMsg.style.animation = 'fadeOut 3s forwards'; }
+        function showStageTitle(num) { stageMsg.innerText = num === 6 ? "FINAL STAGE" : "STAGE " + num; stageMsg.style.display = 'block'; stageMsg.style.animation = 'none'; stageMsg.offsetHeight; stageMsg.style.animation = 'fadeOut 3s forwards'; }
 
         let audioCtx;
         function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state === 'suspended') audioCtx.resume(); }
@@ -358,19 +332,16 @@
             }
         }
 
-        // 돌아가기 기능 구현 (메인 메뉴)
         function goToMainMenu() {
             gameOverScreen.style.display = 'none';
             victoryScreen.style.display = 'none';
             startScreen.style.display = 'flex';
-            loadOnlineRanking(); // 랭킹 갱신
-            renderSelectButtons(); // 잠금 해제 상태 갱신
+            loadOnlineRanking();
+            renderSelectButtons();
         }
 
         donateBtn.onclick = () => { window.open('https://www.buymeacoffee.com/'); alert("후원 페이지로 이동합니다! (테스트: 이번 판 쉴드 보너스 적용)"); startShield = true; };
         startBtn.onclick = () => { currentUsername = usernameInput.value.trim() || "Player"; startScreen.style.display='none'; initAudio(); startGame(); };
-        
-        // 버튼 연결
         restartBtn.onclick = goToMainMenu;
         victoryBtn.onclick = goToMainMenu;
 
@@ -386,7 +357,6 @@
             if(now - lastShotTime > SHOT_DELAY) {
                 let bx = player.x + player.width/2; 
                 bx -= PLANES[player.planeIndex].missile.width / 2;
-
                 if(player.powerLevel===1) spawnBullet(bx, player.y, 0, 0);
                 else if(player.powerLevel===2) { spawnBullet(bx-10, player.y, -1, 0); spawnBullet(bx+10, player.y, 1, 0); }
                 else { spawnBullet(bx, player.y, 0, 0); spawnBullet(bx-10, player.y, -2, 0); spawnBullet(bx+10, player.y, 2, 0); }
@@ -397,20 +367,27 @@
             if(player.speed > PLANES[player.planeIndex].speed && now > player.speedTime) { player.speed = PLANES[player.planeIndex].speed; addItemLog("📉 SPEED NORMAL", '#888'); }
             if(player.hasShield && now > player.shieldTime) { player.hasShield = false; addItemLog("🛡️ SHIELD EXPIRED", '#888'); }
 
-            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[4];
+            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[6];
             if(!boss.active) {
                 if(score >= currentStageData.triggerScore) { boss.active = true; boss.hp = currentStageData.bossHp; boss.maxHp = boss.hp; boss.y = -70; boss.x = canvas.width/2 - 45; warningMsg.style.display = 'block'; setTimeout(()=>warningMsg.style.display='none', 3000); } 
                 else if(Math.random() < 0.03 + (stage*0.01)) { spawnEnemy(Math.random()*(canvas.width-35), -30); }
             }
             if(boss.active) {
-                if(boss.y < 50) boss.y++; else { boss.x += 2 * boss.dir; if(boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1; if(Math.random() < 0.03) { let angle = Math.atan2(player.y - (boss.y+boss.height), player.x - (boss.x+boss.width/2)); let speed = stage === 4 ? 10 : 5; if(stage === 3) { bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed}); bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle-0.3)*speed, dy:Math.sin(angle-0.3)*speed}); bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle+0.3)*speed, dy:Math.sin(angle+0.3)*speed}); } else { bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed}); }}}
+                if(boss.y < 50) boss.y++; else { boss.x += 2 * boss.dir; if(boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1; 
+                if(Math.random() < 0.03) { 
+                    let angle = Math.atan2(player.y - (boss.y+boss.height), player.x - (boss.x+boss.width/2)); 
+                    let speed = (stage >= 4) ? 10 : 5; 
+                    if(stage === 3 || stage === 5) { bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed}); bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle-0.3)*speed, dy:Math.sin(angle-0.3)*speed}); bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle+0.3)*speed, dy:Math.sin(angle+0.3)*speed}); } 
+                    else if(stage === 6) { for(let k=0; k<5; k++) { let rndAng = Math.random() * Math.PI; bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:8, height:8, dx:Math.cos(rndAng)*speed*1.5, dy:Math.sin(rndAng)*speed*1.5}); } }
+                    else { bossBullets.push({x:boss.x+boss.width/2, y:boss.y+boss.height, width:10, height:20, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed}); }
+                }}
                 if(player.x < boss.x + boss.width && player.x + player.width > boss.x && player.y < boss.y + boss.height && player.y + player.height > boss.y) hitPlayer();
             }
             for(let i=bullets.length-1; i>=0; i--) {
                 let b = bullets[i]; b.y += b.dy; b.x += b.dx; if(b.y < -20 || b.x < -20 || b.x > canvas.width+20) { bulletPool.push(b); bullets.splice(i, 1); continue; }
                 if(boss.active && b.x<boss.x+boss.width && b.x+b.width>boss.x && b.y<boss.y+boss.height && b.y+b.height>boss.y) {
                     bulletPool.push(b); bullets.splice(i, 1); boss.hp--; playSound('boss_hit'); createExplosion(b.x, b.y, '#fff', 3); if(Math.random()<0.05) items.push({x:boss.x+45, y:boss.y+70, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false});
-                    if(boss.hp<=0) { boss.active=false; score += currentStageData.reward; uiScore.innerText=score; playSound('boss_die'); createExplosion(boss.x+45, boss.y+35, '#e040fb', 50); enemies.forEach(e => enemyPool.push(e)); enemies=[]; bossBullets=[]; bullets.forEach(b => bulletPool.push(b)); bullets=[]; if(stage<4) { stage++; showStageTitle(stage); } else { isGameRunning=false; saveScoreToOnline(currentUsername, score); checkUnlocks(score); document.getElementById('victory-score').innerText = "SCORE: " + score; loadOnlineRanking(); victoryScreen.style.display='flex'; } break; } continue;
+                    if(boss.hp<=0) { boss.active=false; score += currentStageData.reward; uiScore.innerText=score; playSound('boss_die'); createExplosion(boss.x+45, boss.y+35, '#e040fb', 50); enemies.forEach(e => enemyPool.push(e)); enemies=[]; bossBullets=[]; bullets.forEach(b => bulletPool.push(b)); bullets=[]; if(stage<6) { stage++; showStageTitle(stage); } else { isGameRunning=false; saveScoreToOnline(currentUsername, score); checkUnlocks(score); document.getElementById('victory-score').innerText = "SCORE: " + score; loadOnlineRanking(); victoryScreen.style.display='flex'; } break; } continue;
                 }
                 let hit = false; for(let j=enemies.length-1; j>=0; j--) { let e = enemies[j]; if(b.x<e.x+e.width && b.x+b.width>e.x && b.y<e.y+e.height && b.y+b.height>e.y) { hit = true; enemyPool.push(e); enemies.splice(j, 1); score+=100; uiScore.innerText=score; playSound('explosion'); createExplosion(e.x+17, e.y+15, '#ff5252'); if(Math.random()<0.15) items.push({x:e.x, y:e.y, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false}); break; }}
                 if(hit) { bulletPool.push(b); bullets.splice(i, 1); }
@@ -435,10 +412,16 @@
                     if(player.hasShield) { ctx.strokeStyle='#0f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x+player.width/2, player.y+player.height/2, 30, 0, Math.PI*2); ctx.stroke(); }
                 }
             }
-            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[4];
+            
+            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[6];
             const stageColor = currentStageData.color;
             enemies.forEach(e => drawPixelSprite(enemySpriteMono, e.x, e.y, 5, stageColor));
-            if(boss.active) { drawPixelSprite(bossSpriteMono, boss.x, boss.y, 10, stageColor); ctx.fillStyle='red'; ctx.fillRect(boss.x, boss.y-15, boss.width, 10); ctx.fillStyle='#0f0'; ctx.fillRect(boss.x, boss.y-15, boss.width*(boss.hp/boss.maxHp), 10); }
+            
+            if(boss.active) { 
+                const bossType = currentStageData.bossType || 'MK1';
+                drawPixelSprite(BOSS_MODELS[bossType], boss.x, boss.y, 10, stageColor); 
+                ctx.fillStyle='red'; ctx.fillRect(boss.x, boss.y-15, boss.width, 10); ctx.fillStyle='#0f0'; ctx.fillRect(boss.x, boss.y-15, boss.width*(boss.hp/boss.maxHp), 10); 
+            }
             
             bullets.forEach(b => {
                 ctx.fillStyle = b.color;
