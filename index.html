@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 챌린지</title>
+    <title>픽셀 슈터: 마스터피스</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -26,7 +26,6 @@
         
         #donateBtn { background: #ff4081; box-shadow: 0 0 15px #ff4081; margin-top: 20px; font-size: 16px; padding: 10px 20px; color: white; }
         
-        /* 기체 선택 버튼 스타일 */
         #select-container { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; max-width: 380px; }
         .plane-select-btn { padding: 8px; font-size: 11px; border: 2px solid transparent; opacity: 0.6; min-width: 70px; display: flex; flex-direction: column; align-items: center; border-radius: 5px; transition: 0.2s; }
         .plane-select-btn.selected { border-color: #fff; opacity: 1.0; transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.5); font-weight: bold; }
@@ -62,19 +61,15 @@
     
     <div id="start-screen" class="screen">
         <h1 style="color:#00e5ff; text-shadow: 0 0 15px #0000ff;">🚀 PIXEL SHOOTER</h1>
-        
         <div class="ranking-box">
             <div style="text-align:center; margin-bottom:10px; color:#aaa;">👑 TOP 3 RANKING</div>
             <div id="start-ranking-list" style="text-align:center; color:#666;">랭킹 로딩중...</div>
         </div>
-
         <div style="margin-bottom: 5px; color: #fff; font-weight:bold; font-size:14px;">▼ 기체 선택 (해금 시스템) ▼</div>
         <div id="select-container"></div>
-
         <input type="text" id="username" placeholder="닉네임" maxlength="6">
         <button id="startBtn">GAME START</button>
         <button id="donateBtn">☕ 개발자 후원 (보너스)</button>
-
         <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
             ⚡[P]파워업 &nbsp; 💨[S]스피드<br>
             🛡️[H]쉴드 &nbsp; &nbsp; 💣[B]폭탄
@@ -85,12 +80,10 @@
         <h2>GAME OVER</h2>
         <div id="final-score">SCORE: 0</div>
         <div id="unlock-msg" style="color: #ffff00; font-weight: bold; margin-bottom: 10px; font-size: 18px; text-shadow: 0 0 5px orange;"></div>
-        
         <div class="ranking-box ranking-scroll">
             <div style="text-align:center; margin-bottom:5px; color:#aaa;">🏆 TOP 10</div>
             <div id="gameover-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
-        
         <button id="restartBtn">MAIN MENU</button>
     </div>
 
@@ -101,16 +94,12 @@
             <div style="text-align:center; margin-bottom:5px; color:#aaa;">🏆 TOP 10</div>
             <div id="victory-ranking-list" style="text-align:center; color:#666;">로딩중...</div>
         </div>
-        
         <button id="victoryBtn">MAIN MENU</button>
     </div>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
 
     <script>
-        // =========================================================
-        // 🔥 [2] 파이어베이스 설정 (고객님 키값 적용 완료!)
-        // =========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE",
             authDomain: "pixel-shooter-1e9b9.firebaseapp.com",
@@ -120,37 +109,22 @@
             messagingSenderId: "1043130908247",
             appId: "1:1043130908247:web:0688292b8d8bbacd656d12"
         };
-        // =========================================================
 
         let db;
         let isDbConnected = false;
         try { firebase.initializeApp(firebaseConfig); db = firebase.database(); isDbConnected = true; console.log("DB 연결 성공"); } catch (e) { console.log("DB 연결 오류:", e); }
         function saveScoreToOnline(name, score) { if (!isDbConnected) return; db.ref('scores').push({ username: name, score: score }); }
         
-        // 👑 랭킹 로드 함수
         function loadOnlineRanking() {
             if (!isDbConnected) return;
-            
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val(); let rankingArr = []; if (data) { for (let key in data) rankingArr.push(data[key]); rankingArr.sort((a, b) => b.score - a.score); }
-                
-                // Top 3 생성
-                let html3 = "";
                 const top3 = rankingArr.slice(0, 3);
-                if(top3.length === 0) html3 = "기록 없음";
-                else top3.forEach((rank, index) => { 
-                    let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : "rank-3"; 
-                    html3 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; 
-                });
+                let html3 = top3.length === 0 ? "기록 없음" : "";
+                top3.forEach((rank, index) => { let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : "rank-3"; html3 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; });
                 document.getElementById('start-ranking-list').innerHTML = html3;
-
-                // Top 10 생성
-                let html10 = "";
-                if(rankingArr.length === 0) html10 = "기록 없음";
-                else rankingArr.forEach((rank, index) => { 
-                    let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : ""; 
-                    html10 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; 
-                });
+                let html10 = rankingArr.length === 0 ? "기록 없음" : "";
+                rankingArr.forEach((rank, index) => { let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : ""; html10 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; });
                 document.getElementById('gameover-ranking-list').innerHTML = html10;
                 document.getElementById('victory-ranking-list').innerHTML = html10;
             });
@@ -185,17 +159,15 @@
 
         const bulletPool = []; const enemyPool = []; const particlePool = []; 
 
-        // ★★★ 난이도표 파일 데이터 완벽 반영 ★★★
         const STAGE_DATA = {
-            1: { triggerScore: 5000,   bossHp: 50,   reward: 35000,  color: '#ff5252', bossType: 'MK1' }, // PDF: 5000 / 35000
-            2: { triggerScore: 45000,  bossHp: 100,  reward: 50000,  color: '#00e5ff', bossType: 'MK1' }, // PDF: 45000 / 50000
-            3: { triggerScore: 100000, bossHp: 200,  reward: 150000, color: '#ffff00', bossType: 'MK2' }, // PDF: 100000 / 150000
-            4: { triggerScore: 260000, bossHp: 500,  reward: 260000, color: '#d50000', bossType: 'MK2' }, // PDF: 260000 / 260000
-            5: { triggerScore: 530000, bossHp: 1000, reward: 300000, color: '#ff9800', bossType: 'MK3' }, // PDF: 530000 / 300000
-            6: { triggerScore: 840000, bossHp: 2000, reward: 400000, color: '#76ff03', bossType: 'MK3' }  // PDF: 840000 / 400000
+            1: { triggerScore: 5000,   bossHp: 50,   reward: 35000,  color: '#ff5252', bossType: 'MK1' },
+            2: { triggerScore: 45000,  bossHp: 100,  reward: 50000,  color: '#00e5ff', bossType: 'MK1' },
+            3: { triggerScore: 100000, bossHp: 200,  reward: 150000, color: '#ffff00', bossType: 'MK2' },
+            4: { triggerScore: 260000, bossHp: 500,  reward: 260000, color: '#d50000', bossType: 'MK2' },
+            5: { triggerScore: 530000, bossHp: 1000, reward: 300000, color: '#ff9800', bossType: 'MK3' },
+            6: { triggerScore: 840000, bossHp: 2000, reward: 400000, color: '#76ff03', bossType: 'MK3' }
         };
 
-        // 보스 스프라이트
         const BOSS_MODELS = {
             'MK1': [ [0,0,0,0,1,1,1,0,0,0,0],[0,0,1,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,1,1,0],[1,1,0,1,1,1,1,1,0,1,1],[1,1,1,1,1,1,1,1,1,1,1],[0,1,0,1,0,0,0,1,0,1,0],[0,1,0,0,0,0,0,0,0,1,0] ],
             'MK2': [ [0,0,0,0,0,1,0,0,0,0,0],[0,0,0,1,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,1,1,1,0],[1,1,1,1,0,1,0,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1],[0,1,1,0,0,1,0,0,1,1,0],[0,0,1,0,0,0,0,0,1,0,0] ],
@@ -209,6 +181,53 @@
             { name: "VIPER", color: '#76ff03', speed: 6, reqScore: 300000, sprite: [[0,0,0,'#b2ff59',0,0,0],[0,0,'#76ff03','#76ff03','#76ff03',0,0],[0,'#64dd17','#76ff03','#ccff90','#76ff03','#64dd17',0],['#33691e','#64dd17','#76ff03','#ccff90','#76ff03','#64dd17','#33691e'],[0,'#33691e','#64dd17','#76ff03','#64dd17','#33691e',0],[0,0,'#76ff03',0,'#76ff03',0,0]], missile: { type: 'rect', color: '#76ff03', width: 5, height: 10, speed: -10 } },
             { name: "VOID", color: '#e040fb', speed: 5, reqScore: 500000, sprite: [[0,0,0,'#e1bee7',0,0,0],[0,0,'#ce93d8','#e040fb','#ce93d8',0,0],[0,'#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc',0],['#8e24aa','#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc','#8e24aa'],[0,'#6a1b9a','#8e24aa',0,'#8e24aa','#6a1b9a',0],[0,'#e040fb',0,0,0,'#e040fb',0]], missile: { type: 'orb', color: '#e040fb', width: 6, height: 6, speed: -9 } }
         ];
+
+        const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
+        const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000';
+        const itemSprites = { 'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]] };
+
+        // ★★★ 최적화: 도장(Image) 만들기 함수 ★★★
+        function createCachedSprite(spriteMatrix, colorOverride) {
+            const c = document.createElement('canvas');
+            c.width = spriteMatrix[0].length * pixelSize;
+            c.height = spriteMatrix.length * pixelSize;
+            const cx = c.getContext('2d');
+            for(let r=0; r<spriteMatrix.length; r++) {
+                for(let c=0; c<spriteMatrix[r].length; c++) {
+                    let pixel = spriteMatrix[r][c];
+                    if(pixel === 0) continue;
+                    cx.fillStyle = colorOverride || (typeof pixel === 'string' ? pixel : 'white');
+                    cx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+                }
+            }
+            return c;
+        }
+
+        // 이미지 캐시 저장소
+        const IMG_CACHE = { planes: [], enemies: {}, bosses: {}, items: {} };
+
+        // 게임 시작 전 모든 이미지 미리 생성 (프리 렌더링)
+        function initImages() {
+            // 1. 플레이어 기체
+            PLANES.forEach(p => {
+                p.img = createCachedSprite(p.sprite);
+            });
+            // 2. 적 (스테이지별 색상)
+            for(let i=1; i<=6; i++) {
+                IMG_CACHE.enemies[i] = createCachedSprite(enemySpriteMono, STAGE_DATA[i].color);
+            }
+            // 3. 보스 (타입 & 색상별)
+            for(let i=1; i<=6; i++) {
+                const type = STAGE_DATA[i].bossType;
+                const model = BOSS_MODELS[type];
+                IMG_CACHE.bosses[i] = createCachedSprite(model, STAGE_DATA[i].color); // 보스 크기는 10배 확대해서 그릴 것임
+            }
+            // 4. 아이템
+            for(let key in itemSprites) {
+                IMG_CACHE.items[key] = createCachedSprite(itemSprites[key]);
+            }
+        }
+        initImages(); // 실행!
 
         let unlockedPlanes = JSON.parse(localStorage.getItem('unlockedPlanes')) || [0];
 
@@ -252,22 +271,8 @@
             }
         }
 
-        const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
-        const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000';
-        const itemSprites = { 'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]] };
-
-        function drawPixelSprite(sprite, x, y, pixelSize, overrideColor = null) {
-            for(let r=0; r<sprite.length; r++) {
-                for(let c=0; c<sprite[r].length; c++) {
-                    let pixel = sprite[r][c];
-                    if (pixel === 0) continue;
-                    ctx.fillStyle = overrideColor ? overrideColor : (typeof pixel === 'string' ? pixel : 'white');
-                    ctx.fillRect(x + c*pixelSize, y + r*pixelSize, pixelSize, pixelSize);
-                }
-            }
-        }
-
         let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: 0 };
+        // 보스: 픽셀 사이즈 10 (2배) -> 11칸*10 = 110 width
         let boss = { active: false, x: 0, y: -100, width: 110, height: 70, hp: 0, maxHp: 50, dir: 1 };
         let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
         let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
@@ -284,7 +289,14 @@
         function spawnBullet(x, y, dx, dy_offset) {
             const mData = PLANES[player.planeIndex].missile; 
             let b = bulletPool.length > 0 ? bulletPool.pop() : { };
-            b.x=x; b.y=y; b.dx=dx||0; b.dy = mData.speed + (dy_offset||0); b.width = mData.width; b.height = mData.height; b.color = mData.color; b.type = mData.type; b.isDead=false;
+            b.x=x; b.y=y; 
+            b.dx=dx||0; 
+            b.dy = mData.speed + (dy_offset||0);
+            b.width = mData.width; 
+            b.height = mData.height;
+            b.color = mData.color; 
+            b.type = mData.type;   
+            b.isDead=false;
             bullets.push(b);
         }
 
@@ -404,22 +416,31 @@
             ctx.fillStyle = 'white'; stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
             particles.forEach(p => { ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
             ctx.globalAlpha=1.0;
-            items.forEach(item => { drawPixelSprite(itemSprites[item.type], item.x, item.y, 5); });
+            
+            // 프리 렌더링된 이미지 그리기 (도장 찍기!)
+            items.forEach(item => { if(IMG_CACHE.items[item.type]) ctx.drawImage(IMG_CACHE.items[item.type], item.x, item.y); });
+            
             if(isGameRunning) {
                 if(player.invincible > Date.now() && Date.now()%200 < 100) {} 
                 else {
-                    drawPixelSprite(PLANES[player.planeIndex].sprite, player.x, player.y, 5);
+                    // 플레이어 기체 그리기
+                    if(PLANES[player.planeIndex].img) ctx.drawImage(PLANES[player.planeIndex].img, player.x, player.y);
                     if(player.hasShield) { ctx.strokeStyle='#0f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x+player.width/2, player.y+player.height/2, 30, 0, Math.PI*2); ctx.stroke(); }
                 }
             }
             
-            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[6];
-            const stageColor = currentStageData.color;
-            enemies.forEach(e => drawPixelSprite(enemySpriteMono, e.x, e.y, 5, stageColor));
+            // 적 그리기 (스테이지별 미리 그려둔 이미지 사용)
+            // 스테이지가 6을 넘어가면 6탄 이미지 사용
+            const safeStage = Math.min(stage, 6);
+            if(IMG_CACHE.enemies[safeStage]) {
+                enemies.forEach(e => ctx.drawImage(IMG_CACHE.enemies[safeStage], e.x, e.y));
+            }
             
-            if(boss.active) { 
-                const bossType = currentStageData.bossType || 'MK1';
-                drawPixelSprite(BOSS_MODELS[bossType], boss.x, boss.y, 10, stageColor); 
+            // 보스 그리기
+            if(boss.active && IMG_CACHE.bosses[safeStage]) { 
+                // 보스 이미지는 원래 픽셀 사이즈 5배였던걸 10배(2배 뻥튀기)해서 그려야 함
+                // 원본 캔버스는 pixelSize 5로 그려짐. -> scale(2,2) 해서 그리기
+                ctx.drawImage(IMG_CACHE.bosses[safeStage], boss.x, boss.y, boss.width, boss.height);
                 ctx.fillStyle='red'; ctx.fillRect(boss.x, boss.y-15, boss.width, 10); ctx.fillStyle='#0f0'; ctx.fillRect(boss.x, boss.y-15, boss.width*(boss.hp/boss.maxHp), 10); 
             }
             
