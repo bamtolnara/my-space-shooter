@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 모바일 UI 수정</title>
+    <title>픽셀 슈터: 익스트림 보스</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -39,7 +39,6 @@
         #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* ★★★ HUD 상단 여백 추가 (top: 10px) ★★★ */
         .hud-top { 
             position: absolute; top: 10px; left: 0; width: 100%; 
             background: rgba(0, 0, 0, 0.6); border-bottom: 1px solid rgba(255,255,255,0.1); 
@@ -57,13 +56,8 @@
         #dev-indicator { position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-size: 10px; display: none; z-index: 50; text-shadow: 0 0 5px #00ff00; }
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         
-        /* ★★★ 모바일 최적화 (상단 안전 여백 확보) ★★★ */
         @media (max-width: 800px) {
-            body { 
-                display: block; 
-                /* ★ 중요: 상단 패딩을 60px로 늘려서 주소창 공간 확보 ★ */
-                padding: 60px 0 20px 0; 
-            }
+            body { display: block; padding: 60px 0 20px 0; }
             #main-layout { flex-direction: column; align-items: center; gap: 10px; }
             #game-container { order: 1; width: 100%; max-width: 400px; height: 600px; }
             .side-panel.right { display: flex; order: 2; width: 100%; max-width: 400px; height: auto; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; }
@@ -95,6 +89,7 @@
         .plane-btn.selected { border-color: #00e5ff; opacity: 1.0; transform: scale(1.1); box-shadow: 0 0 10px #00e5ff, inset 0 0 10px rgba(0, 229, 255, 0.3); }
         .plane-btn:hover { border-color: #fff; }
         .locked { opacity: 0.3; cursor: not-allowed; filter: grayscale(100%); }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -491,19 +486,25 @@
                     else if(stage === 4) { 
                         for(let i=0; i<7; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
-                    else if(stage === 5) { 
+                    else if(stage === 5) { // ★★★ 5단계 보스: 6발 부채꼴 난사 (수정됨) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        spawnBossBullet(bx, by, Math.cos(a)*12, Math.sin(a)*12, 'sniper'); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.2)*12, Math.sin(a-0.2)*12, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.2)*12, Math.sin(a+0.2)*12, 'sniper');
-                    }
-                    else { 
-                        if(boss.angle === undefined) boss.angle = 0;
-                        for(let i=0; i<4; i++) {
-                            const rad = boss.angle + (Math.PI/2 * i);
-                            spawnBossBullet(bx, by, Math.cos(rad)*8, Math.sin(rad)*8);
+                        for(let i=0; i<6; i++) {
+                            // -2.5 ~ +2.5 범위로 각도 분산 (0.08 간격)
+                            const offset = (i - 2.5) * 0.08; 
+                            spawnBossBullet(bx, by, Math.cos(a+offset)*12, Math.sin(a+offset)*12, 'sniper'); 
                         }
-                        boss.angle += 0.2; 
+                    }
+                    else { // ★★★ 6단계+ 보스: 12방향 하단 집중 나선환 (수정됨) ★★★
+                        if(boss.angle === undefined) boss.angle = 0;
+                        // 12방향으로 쏘되, 위로 가는 탄환(vy < 0)은 쏘지 않음
+                        for(let i=0; i<12; i++) {
+                            const rad = boss.angle + (Math.PI * 2 / 12 * i);
+                            const vy = Math.sin(rad) * 8;
+                            if (vy > -2) { // 약간의 측면 허용, 위쪽은 제외
+                                spawnBossBullet(bx, by, Math.cos(rad)*8, vy);
+                            }
+                        }
+                        boss.angle += 0.15; // 회전 속도
                     }
                     boss.lastShot = Date.now();
                 }
@@ -513,6 +514,7 @@
                     if(b.active && checkColl(b, boss)) {
                         boss.hp--; boss.hit = 5; b.active = false;
                         if(boss.hp <= 0) { 
+                            // ★★★ 보스 클리어 보너스 ( Ver 16.3 수정 ) ★★★
                             const bonuses = [0, 5000, 20000, 40000, 90000, 190000, 290000];
                             let reward = (stage <= 6) ? bonuses[stage] : 5000;
                             score += reward; 
@@ -608,9 +610,9 @@
         }
         function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
         
+        // ★★★ 개발자 모드: 무적 확인 ★★★
         function hitPlayer() {
-            // ★★★ 개발자 모드: 무적 확인 (체력 안 닳음) ★★★
-            if(isDevMode) return; 
+            if(isDevMode) return; // 개발자 모드면 무적
             
             if(player.invincible > 0) return;
             if(player.shield) { 
