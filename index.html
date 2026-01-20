@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 자유 비행</title>
+    <title>픽셀 슈터: 레이저 정렬</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
@@ -123,6 +123,7 @@
             } catch(e){} 
         }
 
+        // --- 스프라이트 데이터 ---
         const SPRITES = {
             planes: [
                 [[0,0,0,0,2,0,0,0,0],[0,0,0,1,2,1,0,0,0],[0,0,1,1,1,1,1,0,0],[0,1,1,3,1,3,1,1,0],[1,1,1,1,3,1,1,1,1],[1,3,0,1,3,1,0,3,1],[0,3,0,0,3,0,0,3,0]], 
@@ -139,11 +140,15 @@
             enemy: [[1,0,0,0,0,0,1],[0,1,1,1,1,1,0],[1,1,0,3,0,1,1],[1,3,1,3,1,3,1],[0,3,0,3,0,3,0],[0,3,0,0,0,3,0]],
             boss: [[0,0,1,1,1,0,0],[0,1,1,2,1,1,0],[1,1,3,1,3,1,1],[1,3,3,1,3,3,1],[0,3,0,3,0,3,0],[1,3,0,0,0,3,1]],
             drone: [[0,2,0],[1,1,1],[1,3,1],[0,3,0]],
+            
+            // 아이템 (7x7)
             item_P: [[1,0,1,0,1,1,1],[1,0,1,0,1,0,1],[1,0,1,0,1,1,1],[1,0,1,0,1,0,0],[1,1,1,0,1,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]], 
             item_S: [[0,0,0,0,0,0,0],[1,1,0,0,0,1,1],[1,1,1,0,1,1,1],[0,1,1,1,1,1,0],[0,0,1,1,1,0,0],[0,0,0,1,0,0,0],[0,0,0,0,0,0,0]],
             item_H: [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,1,1,0,1],[0,1,0,1,0,1,0],[0,0,1,0,1,0,0],[0,0,0,1,0,0,0]],
             item_B: [[0,0,0,1,0,0,0],[0,0,1,1,1,0,0],[0,0,1,2,1,0,0],[0,0,1,2,1,0,0],[0,0,1,2,1,0,0],[0,1,1,3,1,1,0],[0,1,0,3,0,1,0]],
             item_O: [[0,0,1,1,1,0,0],[0,1,1,2,1,1,0],[1,1,0,3,0,1,1],[1,2,3,2,3,2,1],[1,1,0,3,0,1,1],[0,1,1,2,1,1,0],[0,0,1,1,1,0,0]],
+
+            // ★★★ 탄환 스프라이트 ★★★
             bullet_basic:  [[1],[1],[1],[1]],
             bullet_rocket: [[1,1,1,1],[1,2,2,1],[1,2,2,1],[1,1,1,1]],
             bullet_beam:   [[1],[1],[1],[1],[1],[1],[1],[1],[1],[1]],
@@ -178,11 +183,13 @@
             });
             bufferSprite('enemy_hit', SPRITES.enemy, 'white', 'white', 'white');
             bufferSprite('boss_hit', SPRITES.boss, 'white', 'white', 'white', 3);
+            
             bufferSprite('item_P', SPRITES.item_P, '#ffd700', '#ffffff', '#daa520'); 
             bufferSprite('item_S', SPRITES.item_S, '#ffffff', '#e0e0e0', '#cccccc');
             bufferSprite('item_H', SPRITES.item_H, '#2979ff', '#ffffff', '#0d47a1');
             bufferSprite('item_B', SPRITES.item_B, '#d50000', '#ff8a80', '#ff1744');
             bufferSprite('item_O', SPRITES.item_O, '#b388ff', '#ffffff', '#6200ea');
+
             bufferSprite('b_basic', SPRITES.bullet_basic, '#ffeb3b', '#fff', '#fbc02d');
             bufferSprite('b_beam', SPRITES.bullet_beam, '#00e5ff', '#fff', '#00b0ff');
             bufferSprite('b_rocket', SPRITES.bullet_rocket, '#ff5252', '#fff', '#c62828');
@@ -206,14 +213,13 @@
         let player = { x: 180, y: 500, w: 0, h: 0, speed: 5, power: 1, shield: false, invincible: 0, drones: [] };
         let bullets=[], bossBullets=[], enemies=[], items=[], boss=null, particles=[], stars=[], keys={};
         let lastTime=0, lastShotTime=0;
-        let touchX=null, touchY=null, selectedIdx=0, unlocked=[0], currentUsername="Player"; // ★ 터치 Y 좌표 변수 추가
+        let touchX=null, touchY=null, selectedIdx=0, unlocked=[0], currentUsername="Player";
 
         for(let i=0; i<60; i++) {
             const speed = Math.random() < 0.2 ? Math.random()*20 + 10 : Math.random()*2 + 0.5;
             stars.push({ x: Math.random()*GAME_WIDTH, y: Math.random()*GAME_HEIGHT, w: speed>5?1:2, h: speed>5?Math.random()*30+10:2, speed: speed, color: speed>5?`rgba(255,255,255,${Math.random()*0.3})`:`rgba(255,255,255,${Math.random()*0.8})` });
         }
 
-        // ★★★ 터치 좌표 계산 함수 수정 (X, Y 모두 반환) ★★★
         function getPos(e) { 
             const r = canvas.getBoundingClientRect(); 
             const t = e.touches ? e.touches[0] : e;
@@ -223,7 +229,6 @@
             };
         }
 
-        // ★★★ 터치 이벤트 수정 (상하좌우 이동) ★★★
         canvas.addEventListener('touchstart', e => { 
             e.preventDefault(); 
             const pos = getPos(e);
@@ -236,7 +241,6 @@
             if(!isRunning || touchX === null || touchY === null) return;
             const pos = getPos(e);
             
-            // X축, Y축 각각 변화량만큼 이동
             player.x = Math.max(0, Math.min(GAME_WIDTH - player.w, player.x + (pos.x - touchX)));
             player.y = Math.max(0, Math.min(GAME_HEIGHT - player.h, player.y + (pos.y - touchY)));
             
@@ -305,9 +309,20 @@
                 const sMap = SPRITE_MAP[player.bType];
                 const bw = sMap.w;
                 
-                if(player.power === 1) spawnBullet(cx - bw/2, player.y);
-                else { spawnBullet(player.x, player.y); spawnBullet(player.x + player.w - bw, player.y); }
-                player.drones.forEach(d => spawnBullet(d.x + (droneW/2) - bw/2, d.y));
+                // ★★★ 메인 기체 발사 위치 보정 ★★★
+                // 레이저(Beam)는 기체 앞머리에서 쏴야 자연스러우므로 Y좌표를 20px 올림
+                const mainOffsetY = player.bType === 'b_beam' ? 20 : 0;
+
+                if(player.power === 1) spawnBullet(cx - bw/2, player.y - mainOffsetY);
+                else { 
+                    spawnBullet(player.x, player.y - mainOffsetY); 
+                    spawnBullet(player.x + player.w - bw, player.y - mainOffsetY); 
+                }
+                
+                // 드론 발사 위치 보정
+                const droneOffsetY = player.bType === 'b_beam' ? 20 : 10;
+                player.drones.forEach(d => spawnBullet(d.x + (droneW/2) - bw/2, d.y - droneOffsetY));
+                
                 playSound('shoot'); lastShotTime = Date.now();
             }
 
