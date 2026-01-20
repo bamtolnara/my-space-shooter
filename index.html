@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>픽셀 슈터: 마스터피스</title>
+    <title>픽셀 슈터: 드론 스트라이크</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -72,7 +72,8 @@
         <button id="donateBtn">☕ 개발자 후원 (보너스)</button>
         <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
             ⚡[P]파워업 &nbsp; 💨[S]스피드<br>
-            🛡️[H]쉴드 &nbsp; &nbsp; 💣[B]폭탄
+            🛡️[H]쉴드 &nbsp; &nbsp; 💣[B]폭탄<br>
+            <span style="color:#00ffff;">🤖[O]드론 추가 (New!)</span>
         </div>
     </div>
 
@@ -112,21 +113,32 @@
 
         let db;
         let isDbConnected = false;
-        try { firebase.initializeApp(firebaseConfig); db = firebase.database(); isDbConnected = true; console.log("DB 연결 성공"); } catch (e) { console.log("DB 연결 오류:", e); }
-        function saveScoreToOnline(name, score) { if (!isDbConnected) return; db.ref('scores').push({ username: name, score: score }); }
+        try { 
+            if(typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig); 
+                db = firebase.database(); 
+                isDbConnected = true; 
+                console.log("DB 연결 성공"); 
+            }
+        } catch (e) { console.log("DB 연결 오류 (게임 진행 가능):", e); }
+
+        function saveScoreToOnline(name, score) { if (!isDbConnected || !db) return; try{db.ref('scores').push({ username: name, score: score });}catch(e){} }
         
         function loadOnlineRanking() {
-            if (!isDbConnected) return;
+            if (!isDbConnected || !db) {
+                if(document.getElementById('start-ranking-list')) document.getElementById('start-ranking-list').innerHTML = "서버 연결 안됨";
+                return;
+            }
             db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
                 const data = snapshot.val(); let rankingArr = []; if (data) { for (let key in data) rankingArr.push(data[key]); rankingArr.sort((a, b) => b.score - a.score); }
                 const top3 = rankingArr.slice(0, 3);
                 let html3 = top3.length === 0 ? "기록 없음" : "";
                 top3.forEach((rank, index) => { let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : "rank-3"; html3 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; });
-                document.getElementById('start-ranking-list').innerHTML = html3;
+                if(document.getElementById('start-ranking-list')) document.getElementById('start-ranking-list').innerHTML = html3;
                 let html10 = rankingArr.length === 0 ? "기록 없음" : "";
                 rankingArr.forEach((rank, index) => { let colorClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : ""; html10 += `<div class="rank-item ${colorClass}"><span>${index + 1}. ${rank.username}</span><span>${rank.score}</span></div>`; });
-                document.getElementById('gameover-ranking-list').innerHTML = html10;
-                document.getElementById('victory-ranking-list').innerHTML = html10;
+                if(document.getElementById('gameover-ranking-list')) document.getElementById('gameover-ranking-list').innerHTML = html10;
+                if(document.getElementById('victory-ranking-list')) document.getElementById('victory-ranking-list').innerHTML = html10;
             });
         }
 
@@ -153,10 +165,13 @@
         let startShield = false;
         let selectedPlaneIndex = 0; 
         let now, then, elapsed;
+        let score = 0, stage = 1; 
         const fps = 60; const fpsInterval = 1000 / fps;
         const ITEM_DURATION = 10000; 
         const pixelSize = 5;
 
+        // ★ 타격감 변수
+        let shakeTime = 0; 
         const bulletPool = []; const enemyPool = []; const particlePool = []; 
 
         const STAGE_DATA = {
@@ -182,56 +197,65 @@
             { name: "VOID", color: '#e040fb', speed: 5, reqScore: 500000, sprite: [[0,0,0,'#e1bee7',0,0,0],[0,0,'#ce93d8','#e040fb','#ce93d8',0,0],[0,'#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc',0],['#8e24aa','#ab47bc','#e040fb','#f3e5f5','#e040fb','#ab47bc','#8e24aa'],[0,'#6a1b9a','#8e24aa',0,'#8e24aa','#6a1b9a',0],[0,'#e040fb',0,0,0,'#e040fb',0]], missile: { type: 'orb', color: '#e040fb', width: 6, height: 6, speed: -9 } }
         ];
 
-        const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
-        const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000';
-        const itemSprites = { 'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]] };
+        // ★ 보조 기체 (드론) 스프라이트 및 설정
+        const DRONE_SPRITE = [[0,'#00ffff',0],['#00ffff','#ffffff','#00ffff'],[0,'#00ffff',0]];
+        const DRONE_OFFSET_X = 35; // 플레이어 중심으로부터의 X 거리
+        const DRONE_OFFSET_Y = 10; // 플레이어 중심으로부터의 Y 거리
 
-        // ★★★ 최적화: 도장(Image) 만들기 함수 ★★★
+        const enemySpriteMono = [[1,0,0,0,0,0,1], [0,1,1,1,1,1,0], [1,1,0,1,0,1,1], [1,1,1,1,1,1,1], [0,1,0,0,0,1,0], [0,1,0,0,0,1,0]];
+        const P='#ffff00', S='#00e5ff', H='#00ff00', B='#ff0000', O='#00ffff'; // O: Option(드론) 색상
+        // ★ 아이템 스프라이트에 'option' 추가
+        const itemSprites = { 
+            'power': [[P,P,P,P,0],[P,0,0,P,0],[P,P,P,P,0],[P,0,0,0,0],[P,0,0,0,0]], 
+            'speed': [[0,S,S,S,0],[S,0,0,0,0],[0,S,S,S,0],[0,0,0,S,0],[S,S,S,0,0]], 
+            'shield':[[H,0,0,0,H],[H,0,0,0,H],[H,H,H,H,H],[H,0,0,0,H],[H,0,0,0,H]], 
+            'bomb':  [[B,B,B,B,0],[B,0,0,B,0],[B,B,B,0,0],[B,0,0,B,0],[B,B,B,B,0]],
+            'option':[[0,O,O,O,0],[O,0,0,0,O],[O,0,0,0,O],[O,0,0,0,O],[0,O,O,O,0]] // 'O' 모양 아이템
+        };
+
+        // ★★★ 핵심: 프리 렌더링 함수 (최적화) ★★★
         function createCachedSprite(spriteMatrix, colorOverride) {
-            const c = document.createElement('canvas');
-            c.width = spriteMatrix[0].length * pixelSize;
-            c.height = spriteMatrix.length * pixelSize;
-            const cx = c.getContext('2d');
+            if(!spriteMatrix) return null;
+            const offCanvas = document.createElement('canvas'); 
+            offCanvas.width = spriteMatrix[0].length * pixelSize;
+            offCanvas.height = spriteMatrix.length * pixelSize;
+            const offCtx = offCanvas.getContext('2d'); 
             for(let r=0; r<spriteMatrix.length; r++) {
                 for(let c=0; c<spriteMatrix[r].length; c++) {
                     let pixel = spriteMatrix[r][c];
                     if(pixel === 0) continue;
-                    cx.fillStyle = colorOverride || (typeof pixel === 'string' ? pixel : 'white');
-                    cx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+                    offCtx.fillStyle = colorOverride || (typeof pixel === 'string' ? pixel : 'white');
+                    offCtx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
                 }
             }
-            return c;
+            return offCanvas; 
         }
 
-        // 이미지 캐시 저장소
-        const IMG_CACHE = { planes: [], enemies: {}, bosses: {}, items: {} };
+        // 이미지 캐시 저장소 (drone 추가)
+        const IMG_CACHE = { planes: [], enemies: {}, enemies_white: {}, bosses: {}, bosses_white: {}, items: {}, drone: null };
 
-        // 게임 시작 전 모든 이미지 미리 생성 (프리 렌더링)
+        // ★ 게임 로드 시 모든 이미지 미리 생성 (Pre-rendering)
         function initImages() {
-            // 1. 플레이어 기체
-            PLANES.forEach(p => {
-                p.img = createCachedSprite(p.sprite);
-            });
-            // 2. 적 (스테이지별 색상)
-            for(let i=1; i<=6; i++) {
-                IMG_CACHE.enemies[i] = createCachedSprite(enemySpriteMono, STAGE_DATA[i].color);
+            PLANES.forEach(p => { p.img = createCachedSprite(p.sprite); });
+            for(let i=1; i<=6; i++) { 
+                if(STAGE_DATA[i]) {
+                    IMG_CACHE.enemies[i] = createCachedSprite(enemySpriteMono, STAGE_DATA[i].color);
+                    IMG_CACHE.enemies_white[i] = createCachedSprite(enemySpriteMono, '#ffffff'); 
+                    const type = STAGE_DATA[i].bossType; const model = BOSS_MODELS[type]; 
+                    if(model) { IMG_CACHE.bosses[i] = createCachedSprite(model, STAGE_DATA[i].color); IMG_CACHE.bosses_white[i] = createCachedSprite(model, '#ffffff'); }
+                }
             }
-            // 3. 보스 (타입 & 색상별)
-            for(let i=1; i<=6; i++) {
-                const type = STAGE_DATA[i].bossType;
-                const model = BOSS_MODELS[type];
-                IMG_CACHE.bosses[i] = createCachedSprite(model, STAGE_DATA[i].color); // 보스 크기는 10배 확대해서 그릴 것임
-            }
-            // 4. 아이템
-            for(let key in itemSprites) {
-                IMG_CACHE.items[key] = createCachedSprite(itemSprites[key]);
-            }
+            for(let key in itemSprites) { IMG_CACHE.items[key] = createCachedSprite(itemSprites[key]); }
+            // ★ 드론 이미지 프리 렌더링
+            IMG_CACHE.drone = createCachedSprite(DRONE_SPRITE);
+            console.log("프리 렌더링 완료");
         }
-        initImages(); // 실행!
 
-        let unlockedPlanes = JSON.parse(localStorage.getItem('unlockedPlanes')) || [0];
+        let unlockedPlanes = [0];
+        try { const saved = JSON.parse(localStorage.getItem('unlockedPlanes')); if(saved) unlockedPlanes = saved; } catch(e) {}
 
         function renderSelectButtons() {
+            if(!selectContainer) return;
             selectContainer.innerHTML = "";
             PLANES.forEach((plane, index) => {
                 const btn = document.createElement('button');
@@ -250,30 +274,17 @@
                 selectContainer.appendChild(btn);
             });
         }
-        renderSelectButtons();
 
         function checkUnlocks(finalScore) {
-            let newUnlock = false;
-            let unlockedNames = [];
-            PLANES.forEach((plane, index) => {
-                if (!unlockedPlanes.includes(index) && finalScore >= plane.reqScore) {
-                    unlockedPlanes.push(index);
-                    unlockedNames.push(plane.name);
-                    newUnlock = true;
-                }
-            });
-            if (newUnlock) {
-                localStorage.setItem('unlockedPlanes', JSON.stringify(unlockedPlanes));
-                unlockMsg.innerHTML = `🎉 축하합니다!<br>[ ${unlockedNames.join(', ')} ] 해금 완료!`;
-                renderSelectButtons();
-            } else {
-                unlockMsg.innerText = "";
-            }
+            let newUnlock = false; let unlockedNames = [];
+            PLANES.forEach((plane, index) => { if (!unlockedPlanes.includes(index) && finalScore >= plane.reqScore) { unlockedPlanes.push(index); unlockedNames.push(plane.name); newUnlock = true; } });
+            if (newUnlock) { localStorage.setItem('unlockedPlanes', JSON.stringify(unlockedPlanes)); if(unlockMsg) unlockMsg.innerHTML = `🎉 축하합니다!<br>[ ${unlockedNames.join(', ')} ] 해금 완료!`; renderSelectButtons(); } 
+            else if(unlockMsg) { unlockMsg.innerText = ""; }
         }
 
-        let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: 0 };
-        // 보스: 픽셀 사이즈 10 (2배) -> 11칸*10 = 110 width
-        let boss = { active: false, x: 0, y: -100, width: 110, height: 70, hp: 0, maxHp: 50, dir: 1 };
+        // ★ player 객체에 drones 배열 추가
+        let player = { x: 180, y: 500, width: 35, height: 30, speed: 5, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: 0, drones: [] };
+        let boss = { active: false, x: 0, y: -100, width: 110, height: 70, hp: 0, maxHp: 50, dir: 1, hitTime: 0 };
         let bullets = [], bossBullets = [], enemies = [], items = [], stars = [], particles = [], keys = {};
         let lastShotTime = 0; const SHOT_DELAY = 150; let animationId; 
         let lastTouchX = null, lastTouchY = null;
@@ -289,22 +300,26 @@
         function spawnBullet(x, y, dx, dy_offset) {
             const mData = PLANES[player.planeIndex].missile; 
             let b = bulletPool.length > 0 ? bulletPool.pop() : { };
-            b.x=x; b.y=y; 
-            b.dx=dx||0; 
-            b.dy = mData.speed + (dy_offset||0);
-            b.width = mData.width; 
-            b.height = mData.height;
-            b.color = mData.color; 
-            b.type = mData.type;   
-            b.isDead=false;
+            b.x=x; b.y=y; b.dx=dx||0; b.dy = mData.speed + (dy_offset||0); b.width = mData.width; b.height = mData.height; b.color = mData.color; b.type = mData.type; b.isDead=false;
             bullets.push(b);
         }
 
         function createExplosion(x, y, color, count = 8) { for(let i=0; i<count; i++) { let p = particlePool.length > 0 ? particlePool.pop() : { }; p.x=x; p.y=y; p.dx=(Math.random()-0.5)*8; p.dy=(Math.random()-0.5)*8; p.size=Math.random()*4+2; p.life=1.0; p.color=color; particles.push(p); }}
-        function spawnEnemy(x, y) { let e = enemyPool.length > 0 ? enemyPool.pop() : { }; e.x=x; e.y=y; e.width=35; e.height=30; e.isDead=false; enemies.push(e); }
+        
+        function spawnEnemy(x, y) { 
+            let e = enemyPool.length > 0 ? enemyPool.pop() : { }; 
+            e.x=x; e.y=y; e.width=35; e.height=30; e.isDead=false; e.hitTime=0; 
+            e.moveType = Math.floor(Math.random() * 3); 
+            e.initialX = x;
+            enemies.push(e); 
+        }
+
         function showItemPopup(text, x, y, color) { const popup = document.createElement('div'); popup.className = 'item-popup'; popup.innerText = text; popup.style.left = (canvas.offsetLeft + x) + 'px'; popup.style.top = (canvas.offsetTop + y) + 'px'; popup.style.color = color; popup.style.position='absolute'; popup.style.fontWeight='bold'; document.body.appendChild(popup); setTimeout(() => popup.remove(), 1000); }
         function addItemLog(text, color) { const log = document.createElement('div'); log.className = 'log-entry'; log.innerText = text; log.style.color = color; itemLogContainer.prepend(log); if(itemLogContainer.children.length>5) itemLogContainer.lastChild.remove(); }
         function showStageTitle(num) { stageMsg.innerText = num === 6 ? "FINAL STAGE" : "STAGE " + num; stageMsg.style.display = 'block'; stageMsg.style.animation = 'none'; stageMsg.offsetHeight; stageMsg.style.animation = 'fadeOut 3s forwards'; }
+
+        // ★ 타격감 함수
+        function startShake(amount) { shakeTime = amount; }
 
         let audioCtx;
         function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state === 'suspended') audioCtx.resume(); }
@@ -322,10 +337,11 @@
 
         function startGame() {
             score = 0; stage = 1; uiScore.innerText = score; uiStage.innerText = "STAGE 1";
-            player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: PLANES[selectedPlaneIndex].speed, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: selectedPlaneIndex };
+            // ★ drones 배열 초기화
+            player = { x: canvas.width/2 - 17, y: canvas.height - 100, width: 35, height: 30, speed: PLANES[selectedPlaneIndex].speed, powerLevel: 1, hasShield: startShield, invincible: 0, planeIndex: selectedPlaneIndex, drones: [] };
             if(startShield) { addItemLog("💖 후원 감사: 쉴드 시작!", "#ff4081"); }
             bullets = []; bossBullets = []; enemies = []; items = []; particles = []; keys = {};
-            boss.active = false; boss.y = -100;
+            boss.active = false; boss.y = -100; boss.hitTime = 0;
             warningMsg.style.display = 'none'; itemLogContainer.innerHTML = "";
             isGameRunning = true; showStageTitle(1); then = Date.now(); gameLoop();
         }
@@ -352,10 +368,17 @@
             renderSelectButtons();
         }
 
-        donateBtn.onclick = () => { window.open('https://www.buymeacoffee.com/'); alert("후원 페이지로 이동합니다! (테스트: 이번 판 쉴드 보너스 적용)"); startShield = true; };
-        startBtn.onclick = () => { currentUsername = usernameInput.value.trim() || "Player"; startScreen.style.display='none'; initAudio(); startGame(); };
-        restartBtn.onclick = goToMainMenu;
-        victoryBtn.onclick = goToMainMenu;
+        // ★ 안전한 시작
+        window.onload = function() {
+            initImages(); // ★ 프리 렌더링 실행
+            renderSelectButtons();
+            loadOnlineRanking();
+
+            donateBtn.onclick = () => { window.open('https://www.buymeacoffee.com/'); alert("후원 페이지로 이동합니다! (테스트: 이번 판 쉴드 보너스 적용)"); startShield = true; };
+            startBtn.onclick = () => { currentUsername = usernameInput.value.trim() || "Player"; startScreen.style.display='none'; initAudio(); startGame(); };
+            restartBtn.onclick = goToMainMenu;
+            victoryBtn.onclick = goToMainMenu;
+        };
 
         function gameLoop() { animationId = requestAnimationFrame(gameLoop); now = Date.now(); elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); update(); draw(); } }
 
@@ -366,12 +389,26 @@
             if(keys['ArrowUp']) player.y = Math.max(0, player.y - player.speed);
             if(keys['ArrowDown']) player.y = Math.min(canvas.height - player.height, player.y + player.speed);
 
+            // ★ 드론 위치 업데이트 (플레이어 따라다니기)
+            player.drones.forEach((drone, index) => {
+                const offsetX = (index === 0) ? -DRONE_OFFSET_X : DRONE_OFFSET_X;
+                drone.x = player.x + player.width / 2 + offsetX - (3 * pixelSize) / 2;
+                drone.y = player.y + DRONE_OFFSET_Y;
+            });
+
             if(now - lastShotTime > SHOT_DELAY) {
                 let bx = player.x + player.width/2; 
                 bx -= PLANES[player.planeIndex].missile.width / 2;
+                // 플레이어 발사
                 if(player.powerLevel===1) spawnBullet(bx, player.y, 0, 0);
                 else if(player.powerLevel===2) { spawnBullet(bx-10, player.y, -1, 0); spawnBullet(bx+10, player.y, 1, 0); }
                 else { spawnBullet(bx, player.y, 0, 0); spawnBullet(bx-10, player.y, -2, 0); spawnBullet(bx+10, player.y, 2, 0); }
+                
+                // ★ 드론 발사 (기본 탄환 발사)
+                player.drones.forEach(drone => {
+                    spawnBullet(drone.x + (3 * pixelSize) / 2 - PLANES[player.planeIndex].missile.width / 2, drone.y, 0, 0);
+                });
+
                 playSound('shoot'); lastShotTime = now;
             }
 
@@ -381,10 +418,11 @@
 
             const currentStageData = STAGE_DATA[stage] || STAGE_DATA[6];
             if(!boss.active) {
-                if(score >= currentStageData.triggerScore) { boss.active = true; boss.hp = currentStageData.bossHp; boss.maxHp = boss.hp; boss.y = -70; boss.x = canvas.width/2 - 45; warningMsg.style.display = 'block'; setTimeout(()=>warningMsg.style.display='none', 3000); } 
+                if(score >= currentStageData.triggerScore) { boss.active = true; boss.hp = currentStageData.bossHp; boss.maxHp = boss.hp; boss.y = -70; boss.x = canvas.width/2 - 45; boss.hitTime = 0; warningMsg.style.display = 'block'; setTimeout(()=>warningMsg.style.display='none', 3000); } 
                 else if(Math.random() < 0.03 + (stage*0.01)) { spawnEnemy(Math.random()*(canvas.width-35), -30); }
             }
             if(boss.active) {
+                if(boss.hitTime > 0) boss.hitTime--;
                 if(boss.y < 50) boss.y++; else { boss.x += 2 * boss.dir; if(boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.dir *= -1; 
                 if(Math.random() < 0.03) { 
                     let angle = Math.atan2(player.y - (boss.y+boss.height), player.x - (boss.x+boss.width/2)); 
@@ -398,49 +436,97 @@
             for(let i=bullets.length-1; i>=0; i--) {
                 let b = bullets[i]; b.y += b.dy; b.x += b.dx; if(b.y < -20 || b.x < -20 || b.x > canvas.width+20) { bulletPool.push(b); bullets.splice(i, 1); continue; }
                 if(boss.active && b.x<boss.x+boss.width && b.x+b.width>boss.x && b.y<boss.y+boss.height && b.y+b.height>boss.y) {
-                    bulletPool.push(b); bullets.splice(i, 1); boss.hp--; playSound('boss_hit'); createExplosion(b.x, b.y, '#fff', 3); if(Math.random()<0.05) items.push({x:boss.x+45, y:boss.y+70, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false});
+                    bulletPool.push(b); bullets.splice(i, 1); 
+                    boss.hp--; boss.hitTime = 3; 
+                    playSound('boss_hit'); createExplosion(b.x, b.y, '#fff', 3); 
+                    // ★ 아이템 드랍 목록에 'option' 추가
+                    if(Math.random()<0.05) items.push({x:boss.x+45, y:boss.y+70, width:25, height:25, type:['power','speed','shield','bomb','option'][Math.floor(Math.random()*5)], isDead:false});
                     if(boss.hp<=0) { boss.active=false; score += currentStageData.reward; uiScore.innerText=score; playSound('boss_die'); createExplosion(boss.x+45, boss.y+35, '#e040fb', 50); enemies.forEach(e => enemyPool.push(e)); enemies=[]; bossBullets=[]; bullets.forEach(b => bulletPool.push(b)); bullets=[]; if(stage<6) { stage++; showStageTitle(stage); } else { isGameRunning=false; saveScoreToOnline(currentUsername, score); checkUnlocks(score); document.getElementById('victory-score').innerText = "SCORE: " + score; loadOnlineRanking(); victoryScreen.style.display='flex'; } break; } continue;
                 }
-                let hit = false; for(let j=enemies.length-1; j>=0; j--) { let e = enemies[j]; if(b.x<e.x+e.width && b.x+b.width>e.x && b.y<e.y+e.height && b.y+b.height>e.y) { hit = true; enemyPool.push(e); enemies.splice(j, 1); score+=100; uiScore.innerText=score; playSound('explosion'); createExplosion(e.x+17, e.y+15, '#ff5252'); if(Math.random()<0.15) items.push({x:e.x, y:e.y, width:25, height:25, type:['power','speed','shield','bomb'][Math.floor(Math.random()*4)], isDead:false}); break; }}
+                let hit = false; for(let j=enemies.length-1; j>=0; j--) { let e = enemies[j]; if(b.x<e.x+e.width && b.x+b.width>e.x && b.y<e.y+e.height && b.y+b.height>e.y) { 
+                    hit = true; enemyPool.push(e); enemies.splice(j, 1); 
+                    score+=100; uiScore.innerText=score; 
+                    e.hitTime = 2; // ★ 적도 맞으면 반짝!
+                    playSound('explosion'); createExplosion(e.x+17, e.y+15, '#ff5252'); 
+                    // ★ 아이템 드랍 목록에 'option' 추가
+                    if(Math.random()<0.15) items.push({x:e.x, y:e.y, width:25, height:25, type:['power','speed','shield','bomb','option'][Math.floor(Math.random()*5)], isDead:false}); break; 
+                }}
                 if(hit) { bulletPool.push(b); bullets.splice(i, 1); }
             }
-            for(let i=enemies.length-1; i>=0; i--) { let e = enemies[i]; e.y += (3+stage); if(e.y > canvas.height) { enemyPool.push(e); enemies.splice(i, 1); continue; } if(player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) { enemyPool.push(e); enemies.splice(i, 1); hitPlayer(); }}
+            for(let i=enemies.length-1; i>=0; i--) { 
+                let e = enemies[i]; 
+                if(e.hitTime > 0) e.hitTime--; 
+                
+                let baseSpeed = 3 + stage;
+                if(e.moveType === 0) { e.y += baseSpeed; } 
+                else if(e.moveType === 1) { e.y += baseSpeed; e.x = e.initialX + Math.sin(e.y * 0.02) * 50; } 
+                else if(e.moveType === 2) { e.y += baseSpeed * 0.8; if(e.x < player.x) e.x += 1; else if(e.x > player.x) e.x -= 1; }
+
+                if(e.y > canvas.height) { enemyPool.push(e); enemies.splice(i, 1); continue; } 
+                if(player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) { enemyPool.push(e); enemies.splice(i, 1); hitPlayer(); }
+            }
             bossBullets.forEach(bb => { bb.x+=bb.dx; bb.y+=bb.dy; if(bb.y>canvas.height) bb.isDead=true; if(player.x < bb.x + bb.width && player.x + player.width > bb.x && player.y < bb.y + bb.height && player.y + player.height > bb.y) { bb.isDead=true; hitPlayer(); }}); bossBullets = bossBullets.filter(bb => !bb.isDead);
-            items.forEach(item => { item.y+=2; if(item.y>canvas.height) item.isDead=true; if(!item.isDead && player.x < item.x+item.width && player.x+player.width > item.x && player.y < item.y+item.height && player.y+player.height > item.y) { item.isDead=true; score+=500; uiScore.innerText=score; if(item.type==='power'){ if(player.powerLevel<3) player.powerLevel++; player.powerTime=now+ITEM_DURATION; showItemPopup("POWER UP!", player.x, player.y, '#ff0'); addItemLog(`⚡ POWER UP`, '#ff0'); } else if(item.type==='speed'){ player.speed=9; player.speedTime=now+ITEM_DURATION; showItemPopup("SPEED UP!", player.x, player.y, '#0ff'); addItemLog("💨 SPEED UP", '#0ff'); } else if(item.type==='shield'){ player.hasShield=true; player.shieldTime=now+ITEM_DURATION; showItemPopup("SHIELD!", player.x, player.y, '#0f0'); addItemLog("🛡️ SHIELD", '#0f0'); } else if(item.type==='bomb'){ enemies.forEach(e => enemyPool.push(e)); enemies=[]; bossBullets=[]; if(boss.active) boss.hp-=20; createExplosion(200,300,'#f00',50); showItemPopup("BOOM!", player.x, player.y, '#f00'); playSound('explosion'); } if(item.type!=='bomb') playSound('powerup'); }}); items = items.filter(i => !i.isDead);
+            
+            // ★ 아이템 획득 로직 (option 추가)
+            items.forEach(item => { item.y+=2; if(item.y>canvas.height) item.isDead=true; if(!item.isDead && player.x < item.x+item.width && player.x+player.width > item.x && player.y < item.y+item.height && player.y+player.height > item.y) { 
+                item.isDead=true; score+=500; uiScore.innerText=score; 
+                if(item.type==='power'){ if(player.powerLevel<3) player.powerLevel++; player.powerTime=now+ITEM_DURATION; showItemPopup("POWER UP!", player.x, player.y, '#ff0'); addItemLog(`⚡ POWER UP`, '#ff0'); } 
+                else if(item.type==='speed'){ player.speed=9; player.speedTime=now+ITEM_DURATION; showItemPopup("SPEED UP!", player.x, player.y, '#0ff'); addItemLog("💨 SPEED UP", '#0ff'); } 
+                else if(item.type==='shield'){ player.hasShield=true; player.shieldTime=now+ITEM_DURATION; showItemPopup("SHIELD!", player.x, player.y, '#0f0'); addItemLog("🛡️ SHIELD", '#0f0'); } 
+                else if(item.type==='bomb'){ enemies.forEach(e => enemyPool.push(e)); enemies=[]; bossBullets=[]; if(boss.active) boss.hp-=20; createExplosion(200,300,'#f00',50); showItemPopup("BOOM!", player.x, player.y, '#f00'); playSound('explosion'); } 
+                else if(item.type==='option'){ 
+                    if(player.drones.length < 2) { player.drones.push({x:0, y:0}); showItemPopup("DRONE ADDED!", player.x, player.y, '#00ffff'); addItemLog("🤖 DRONE SUPPORT", '#00ffff'); }
+                    else { score+=1000; showItemPopup("BONUS SCORE!", player.x, player.y, '#00ffff'); } // 이미 2개면 점수 보너스
+                }
+                if(item.type!=='bomb') playSound('powerup'); 
+            }}); items = items.filter(i => !i.isDead);
             stars.forEach(s => { s.y+=s.speed; if(s.y>canvas.height) s.y=0; });
             for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; p.x += p.dx; p.y += p.dy; p.life -= 0.1; if(p.life <= 0) { particlePool.push(p); particles.splice(i, 1); }}
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
             ctx.fillStyle = 'white'; stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
             particles.forEach(p => { ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
             ctx.globalAlpha=1.0;
             
-            // 프리 렌더링된 이미지 그리기 (도장 찍기!)
-            items.forEach(item => { if(IMG_CACHE.items[item.type]) ctx.drawImage(IMG_CACHE.items[item.type], item.x, item.y); });
+            // ★ 프리 렌더링된 이미지 그리기
+            items.forEach(item => { 
+                if(IMG_CACHE.items[item.type]) ctx.drawImage(IMG_CACHE.items[item.type], item.x, item.y); 
+                else { ctx.fillStyle = 'gold'; ctx.fillRect(item.x, item.y, item.width, item.height); }
+            });
             
             if(isGameRunning) {
                 if(player.invincible > Date.now() && Date.now()%200 < 100) {} 
                 else {
-                    // 플레이어 기체 그리기
                     if(PLANES[player.planeIndex].img) ctx.drawImage(PLANES[player.planeIndex].img, player.x, player.y);
+                    else { ctx.fillStyle = 'white'; ctx.fillRect(player.x, player.y, player.width, player.height); } 
+                    
+                    // ★ 드론 그리기
+                    if(IMG_CACHE.drone) {
+                        player.drones.forEach(drone => { ctx.drawImage(IMG_CACHE.drone, drone.x, drone.y); });
+                    }
+
                     if(player.hasShield) { ctx.strokeStyle='#0f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x+player.width/2, player.y+player.height/2, 30, 0, Math.PI*2); ctx.stroke(); }
                 }
             }
             
-            // 적 그리기 (스테이지별 미리 그려둔 이미지 사용)
-            // 스테이지가 6을 넘어가면 6탄 이미지 사용
+            const currentStageData = STAGE_DATA[stage] || STAGE_DATA[6];
             const safeStage = Math.min(stage, 6);
-            if(IMG_CACHE.enemies[safeStage]) {
-                enemies.forEach(e => ctx.drawImage(IMG_CACHE.enemies[safeStage], e.x, e.y));
+            if(IMG_CACHE.enemies[safeStage]) { 
+                enemies.forEach(e => {
+                    let drawImg = (e.hitTime > 0) ? IMG_CACHE.enemies_white[safeStage] : IMG_CACHE.enemies[safeStage];
+                    if(drawImg) ctx.drawImage(drawImg, e.x, e.y);
+                    else { ctx.fillStyle = 'red'; ctx.fillRect(e.x, e.y, e.width, e.height); } 
+                }); 
             }
             
-            // 보스 그리기
             if(boss.active && IMG_CACHE.bosses[safeStage]) { 
-                // 보스 이미지는 원래 픽셀 사이즈 5배였던걸 10배(2배 뻥튀기)해서 그려야 함
-                // 원본 캔버스는 pixelSize 5로 그려짐. -> scale(2,2) 해서 그리기
-                ctx.drawImage(IMG_CACHE.bosses[safeStage], boss.x, boss.y, boss.width, boss.height);
+                let drawImg = (boss.hitTime > 0) ? IMG_CACHE.bosses_white[safeStage] : IMG_CACHE.bosses[safeStage];
+                if(drawImg) ctx.drawImage(drawImg, boss.x, boss.y, boss.width, boss.height);
+                else { ctx.fillStyle = 'purple'; ctx.fillRect(boss.x, boss.y, boss.width, boss.height); } 
+
                 ctx.fillStyle='red'; ctx.fillRect(boss.x, boss.y-15, boss.width, 10); ctx.fillStyle='#0f0'; ctx.fillRect(boss.x, boss.y-15, boss.width*(boss.hp/boss.maxHp), 10); 
             }
             
