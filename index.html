@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 모바일 최적화</title>
+    <title>픽셀 슈터: 모바일 UI 수정</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -15,22 +15,14 @@
             margin: 0; background: #050505; 
             display: flex; justify-content: center; align-items: center; 
             min-height: 100vh; font-family: 'Press Start 2P', cursive; color: white; 
-            touch-action: none; overflow-x: hidden; /* 가로 스크롤 방지 */
-            overflow-y: auto; /* 세로 스크롤 허용 (모바일 배치를 위해) */
+            touch-action: none; overflow-x: hidden; overflow-y: auto;
         }
 
-        #main-layout { 
-            display: flex; align-items: flex-start; justify-content: center; 
-            gap: 20px; width: 100%; max-width: 1200px; padding: 10px; box-sizing: border-box; 
-        }
+        #main-layout { display: flex; align-items: flex-start; justify-content: center; gap: 20px; width: 100%; max-width: 1200px; padding: 10px; box-sizing: border-box; }
 
-        /* 패널 공통 스타일 */
-        .side-panel { 
-            width: 130px; background: #111; border: 2px solid #333; border-radius: 10px; 
-            padding: 15px; display: flex; flex-direction: column; gap: 12px; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.8); height: 600px; box-sizing: border-box; 
-        }
-        .panel-title { color: #888; font-size: 10px; text-align: center; margin-bottom: 5px; border-bottom: 2px solid #444; padding-bottom: 5px; width: 100%; }
+        /* 좌측 패널 */
+        .side-panel { width: 130px; background: #111; border: 2px solid #333; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 0 20px rgba(0,0,0,0.8); height: 600px; box-sizing: border-box; }
+        .panel-title { color: #888; font-size: 10px; text-align: center; margin-bottom: 5px; border-bottom: 2px solid #444; padding-bottom: 5px; }
         
         .item-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; opacity: 0.4; transition: 0.2s; font-size: 8px; text-align: center; position: relative; }
         .item-slot.active { opacity: 1.0; text-shadow: 0 0 10px currentColor; transform: scale(1.05); }
@@ -40,18 +32,20 @@
         .item-slot.active .bar-container { display: block; }
         .time-bar { height: 100%; width: 100%; transition: width 0.1s linear; }
 
-        /* 우측 패널 (스킬) */
         .side-panel.right { align-items: center; justify-content: center; opacity: 0.5; }
         .empty-slot { width: 50px; height: 50px; border: 2px dashed #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #555; }
 
         /* 게임 컨테이너 */
-        #game-container { 
-            position: relative; width: 400px; height: 600px; background: #000; 
-            box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; 
-        }
+        #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        .hud-top { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; align-items: center; padding: 8px 0; z-index: 20; }
+        /* ★★★ HUD 상단 여백 추가 (top: 10px) ★★★ */
+        .hud-top { 
+            position: absolute; top: 10px; left: 0; width: 100%; 
+            background: rgba(0, 0, 0, 0.6); border-bottom: 1px solid rgba(255,255,255,0.1); 
+            display: flex; justify-content: space-around; align-items: center; 
+            padding: 8px 0; z-index: 20; 
+        }
         .hud-item { font-size: 10px; color: #fff; text-align: center; }
         .hud-label { color: #aaa; font-size: 8px; margin-bottom: 3px; display: block; }
         .hud-value { font-size: 12px; color: #fff; }
@@ -60,55 +54,30 @@
 
         .ui-layer { position: absolute; pointer-events: none; width: 100%; height: 100%; top: 0; left: 0; z-index: 10; }
         #msg-ui { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 40px; display: none; text-shadow: 0 0 20px red; color: red; animation: blink 0.5s infinite; }
+        #dev-indicator { position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-size: 10px; display: none; z-index: 50; text-shadow: 0 0 5px #00ff00; }
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         
-        /* ★★★ 모바일 최적화 (순서 변경) ★★★ */
+        /* ★★★ 모바일 최적화 (상단 안전 여백 확보) ★★★ */
         @media (max-width: 800px) {
             body { 
-                display: block; /* 세로 스크롤 가능하게 변경 */
-                padding: 10px 0;
+                display: block; 
+                /* ★ 중요: 상단 패딩을 60px로 늘려서 주소창 공간 확보 ★ */
+                padding: 60px 0 20px 0; 
             }
-            #main-layout { 
-                flex-direction: column; /* 세로 배치 */
-                align-items: center;
-                gap: 10px;
-            }
-
-            /* 1. 게임 화면 (가장 위) */
-            #game-container { 
-                order: 1; 
-                width: 100%; max-width: 400px; height: 600px; 
-            }
-
-            /* 2. 스킬 UI (우측 패널 -> 중간) */
-            .side-panel.right { 
-                display: flex; /* 보이게 설정 */
-                order: 2; 
-                width: 100%; max-width: 400px; height: auto; /* 가로 꽉 차게, 높이 자동 */
-                flex-direction: row; /* 아이콘 가로 나열 */
-                justify-content: center; 
-                gap: 15px; padding: 10px;
-            }
-
-            /* 3. 아이템 UI (좌측 패널 -> 가장 아래) */
-            .side-panel.left { 
-                order: 3; 
-                width: 100%; max-width: 400px; height: auto; 
-                flex-direction: row; /* 아이콘 가로 나열 */
-                flex-wrap: wrap; /* 아이콘 많으면 줄바꿈 */
-                justify-content: center; 
-                gap: 10px; padding: 10px;
-            }
-            
-            /* 모바일에서 패널 타이틀 감추거나 스타일 변경 */
-            .panel-title { width: 100%; text-align: left; padding-left: 5px; border: none; margin-bottom: 0; font-size: 8px; display: none; } /* 공간 절약을 위해 숨김 */
+            #main-layout { flex-direction: column; align-items: center; gap: 10px; }
+            #game-container { order: 1; width: 100%; max-width: 400px; height: 600px; }
+            .side-panel.right { display: flex; order: 2; width: 100%; max-width: 400px; height: auto; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; }
+            .side-panel.left { order: 3; width: 100%; max-width: 400px; height: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px; }
+            .panel-title { display: none; }
         }
 
         h1 { 
             font-family: 'Press Start 2P', cursive; font-size: 38px; margin-bottom: 20px; text-align: left; width: 100%; padding-left: 30px; box-sizing: border-box; 
             color: #fff; text-shadow: 4px 4px 0px #00e5ff; line-height: 1.5; white-space: normal; -webkit-text-stroke: 0; animation: none; 
+            cursor: pointer; user-select: none;
         }
-        #game-over-screen h1 { text-align: center; padding-left: 0; font-size: 55px; color: #ff1744; text-shadow: 4px 4px 0 #b71c1c; }
+        #game-over-screen h1 { text-align: center; padding-left: 0; font-size: 55px; color: #ff1744; text-shadow: 4px 4px 0 #b71c1c; cursor: default; }
+        
         .ranking-box { width: 85%; background: rgba(10,10,10,0.95); border: 1px solid #444; box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); padding: 15px; margin-bottom: 20px; border-radius: 5px; }
         #start-ranking { overflow-y: visible; }
         #gameover-ranking { max-height: 150px; overflow-y: auto; padding-right: 5px; }
@@ -126,7 +95,6 @@
         .plane-btn.selected { border-color: #00e5ff; opacity: 1.0; transform: scale(1.1); box-shadow: 0 0 10px #00e5ff, inset 0 0 10px rgba(0, 229, 255, 0.3); }
         .plane-btn:hover { border-color: #fff; }
         .locked { opacity: 0.3; cursor: not-allowed; filter: grayscale(100%); }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -134,28 +102,12 @@
     <div id="main-layout">
         <div class="side-panel left">
             <div class="panel-title">ITEMS</div>
-            <div id="slot-P" class="item-slot" style="color: #ffd700;">
-                <div class="icon-box">P</div><div>PWR</div><div id="count-P" class="item-count">x1</div>
-                <div class="bar-container"><div id="bar-P" class="time-bar" style="background: #ffd700;"></div></div>
-            </div>
-            <div id="slot-S" class="item-slot" style="color: #00e5ff;">
-                <div class="icon-box">S</div><div>SPD</div><div id="count-S" class="item-count">x1</div>
-                <div class="bar-container"><div id="bar-S" class="time-bar" style="background: #00e5ff;"></div></div>
-            </div>
-            <div id="slot-F" class="item-slot" style="color: #ff9800;">
-                <div class="icon-box">F</div><div>FAST</div>
-                <div class="bar-container"><div id="bar-F" class="time-bar" style="background: #ff9800;"></div></div>
-            </div>
-            <div id="slot-H" class="item-slot" style="color: #76ff03;">
-                <div class="icon-box">H</div><div>SHD</div><div id="count-H" class="item-count">OFF</div>
-                <div class="bar-container"><div id="bar-H" class="time-bar" style="background: #76ff03;"></div></div>
-            </div>
-            <div id="slot-O" class="item-slot" style="color: #b388ff;">
-                <div class="icon-box">O</div><div>DRN</div><div id="count-O" class="item-count">x0</div>
-            </div>
-            <div id="slot-B" class="item-slot" style="color: #ff1744;">
-                <div class="icon-box">B</div><div>BMB</div>
-            </div>
+            <div id="slot-P" class="item-slot" style="color: #ffd700;"><div class="icon-box">P</div><div>PWR</div><div id="count-P" class="item-count">x1</div><div class="bar-container"><div id="bar-P" class="time-bar" style="background: #ffd700;"></div></div></div>
+            <div id="slot-S" class="item-slot" style="color: #00e5ff;"><div class="icon-box">S</div><div>SPD</div><div id="count-S" class="item-count">x1</div><div class="bar-container"><div id="bar-S" class="time-bar" style="background: #00e5ff;"></div></div></div>
+            <div id="slot-F" class="item-slot" style="color: #ff9800;"><div class="icon-box">F</div><div>FAST</div><div class="bar-container"><div id="bar-F" class="time-bar" style="background: #ff9800;"></div></div></div>
+            <div id="slot-H" class="item-slot" style="color: #76ff03;"><div class="icon-box">H</div><div>SHD</div><div id="count-H" class="item-count">OFF</div><div class="bar-container"><div id="bar-H" class="time-bar" style="background: #76ff03;"></div></div></div>
+            <div id="slot-O" class="item-slot" style="color: #b388ff;"><div class="icon-box">O</div><div>DRN</div><div id="count-O" class="item-count">x0</div></div>
+            <div id="slot-B" class="item-slot" style="color: #ff1744;"><div class="icon-box">B</div><div>BMB</div></div>
         </div>
 
         <div id="game-container">
@@ -165,10 +117,10 @@
                 <div class="hud-item"><span class="hud-label">STAGE</span><span id="ui-stage" class="hud-value">1</span></div>
                 <div class="hud-item"><span class="hud-label">COIN</span><span id="ui-coin" class="hud-value">0</span></div>
             </div>
-            <div class="ui-layer"><div id="msg-ui">WARNING</div></div>
+            <div class="ui-layer"><div id="msg-ui">WARNING</div><div id="dev-indicator">🔰 DEV MODE</div></div>
             
             <div id="start-screen" class="screen">
-                <h1>PIXEL<br>SHOOTER</h1>
+                <h1 id="game-title">PIXEL<br>SHOOTER</h1>
                 <div class="ranking-box">
                     <div style="text-align:center; color:#ffd700; margin-bottom:10px; font-size:12px;">🏆 HALL OF FAME</div>
                     <div id="start-ranking" class="rank-list">LOADING...</div>
@@ -206,10 +158,13 @@
         const GAME_HEIGHT = 600;
         const ITEM_DURATION = 10000; 
 
+        let isDevMode = false;
+        let titleClickCount = 0;
+
         const firebaseConfig = { apiKey: "AIzaSyDZrdz1YPykH3cMfYrt1Z18fmqFP66ZPNE", authDomain: "pixel-shooter-1e9b9.firebaseapp.com", databaseURL: "https://pixel-shooter-1e9b9-default-rtdb.firebaseio.com", projectId: "pixel-shooter-1e9b9", storageBucket: "pixel-shooter-1e9b9.firebasestorage.app", messagingSenderId: "1043130908247", appId: "1:1043130908247:web:0688292b8d8bbacd656d12" };
         let db, isDbConnected = false;
         function initFirebase() { try { if (typeof firebase !== 'undefined' && !firebase.apps.length) { firebase.initializeApp(firebaseConfig); db = firebase.database(); isDbConnected = true; loadRanking(); } } catch (e) { document.getElementById('start-ranking').innerHTML = "OFFLINE"; } }
-        function saveScore(name, score) { if (!isDbConnected) return; try { db.ref('scores').push({ username: name || "Player", score: score, date: Date.now() }); } catch(e) {} }
+        function saveScore(name, score) { if (!isDbConnected || isDevMode) return; try { db.ref('scores').push({ username: name || "Player", score: score, date: Date.now() }); } catch(e) {} }
         
         function loadRanking() { 
             if (!isDbConnected) return; 
@@ -349,6 +304,18 @@
         canvas.addEventListener('touchend', () => { touchX = null; touchY = null; });
         window.addEventListener('keydown', e=>keys[e.code]=true);
         window.addEventListener('keyup', e=>keys[e.code]=false);
+
+        // ★★★ 제목 클릭 이벤트 (개발자 모드 활성화) ★★★
+        document.getElementById('game-title').addEventListener('click', () => {
+            titleClickCount++;
+            if(titleClickCount === 5) {
+                isDevMode = true;
+                unlocked = [0,1,2,3,4,5,6,7,8,9]; 
+                renderSelectButtons();
+                document.getElementById('dev-indicator').style.display = 'block';
+                alert("🔰 DEV MODE ON 🔰\n무적, 전체해금, 랭킹저장 안됨");
+            }
+        });
 
         function renderSelectButtons() {
             const c = document.getElementById('select-container'); c.innerHTML = "";
@@ -509,23 +476,34 @@
             if(boss) {
                 if(boss.y < 50) boss.y++; boss.x += boss.dir * (2 + stage*0.2); if(boss.x < 0 || boss.x > GAME_WIDTH - boss.w) boss.dir *= -1;
                 const fireRate = Math.max(250, 900 - (stage * 100));
+                
                 if(Date.now() - boss.lastShot > fireRate) {
                     const bx = boss.x + boss.w/2, by = boss.y + boss.h;
+                    
                     if(stage === 1) spawnBossBullet(bx, by, 0, 5);
                     else if(stage === 2) { 
-                        spawnBossBullet(bx-15, by, 0, 6); 
-                        spawnBossBullet(bx, by, 0, 6); 
-                        spawnBossBullet(bx+15, by, 0, 6); 
+                        spawnBossBullet(bx-15, by, 0, 6); spawnBossBullet(bx, by, 0, 6); spawnBossBullet(bx+15, by, 0, 6); 
                     }
                     else if(stage === 3) { 
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
                         for(let k=-0.4; k<=0.4; k+=0.2) spawnBossBullet(bx, by, Math.cos(a+k)*6, Math.sin(a+k)*6); 
                     }
-                    else { 
+                    else if(stage === 4) { 
+                        for(let i=0; i<7; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
+                    }
+                    else if(stage === 5) { 
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
                         spawnBossBullet(bx, by, Math.cos(a)*12, Math.sin(a)*12, 'sniper'); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.1)*12, Math.sin(a-0.1)*12, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.1)*12, Math.sin(a+0.1)*12, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a-0.2)*12, Math.sin(a-0.2)*12, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.2)*12, Math.sin(a+0.2)*12, 'sniper');
+                    }
+                    else { 
+                        if(boss.angle === undefined) boss.angle = 0;
+                        for(let i=0; i<4; i++) {
+                            const rad = boss.angle + (Math.PI/2 * i);
+                            spawnBossBullet(bx, by, Math.cos(rad)*8, Math.sin(rad)*8);
+                        }
+                        boss.angle += 0.2; 
                     }
                     boss.lastShot = Date.now();
                 }
@@ -535,7 +513,6 @@
                     if(b.active && checkColl(b, boss)) {
                         boss.hp--; boss.hit = 5; b.active = false;
                         if(boss.hp <= 0) { 
-                            // ★★★ 보스 클리어 보너스 ( Ver 16.3 수정 ) ★★★
                             const bonuses = [0, 5000, 20000, 40000, 90000, 190000, 290000];
                             let reward = (stage <= 6) ? bonuses[stage] : 5000;
                             score += reward; 
@@ -632,6 +609,9 @@
         function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
         
         function hitPlayer() {
+            // ★★★ 개발자 모드: 무적 확인 (체력 안 닳음) ★★★
+            if(isDevMode) return; 
+            
             if(player.invincible > 0) return;
             if(player.shield) { 
                 player.shield = false; player.timers.shield = 0; 
