@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 명예의 전당</title>
+    <title>픽셀 슈터: 랭킹 확장</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
@@ -28,28 +28,36 @@
             line-height: 1.5; white-space: normal;
         }
 
-        /* ★★★ 랭킹 박스 디자인 수정 (3인 전용) ★★★ */
         .ranking-box { 
             width: 80%; 
             background: rgba(17, 17, 17, 0.9); 
-            border: 2px solid #ffd700; /* 테두리를 금색으로 */
+            border: 2px solid #ffd700; 
             padding: 15px; 
             margin-bottom: 20px; 
             border-radius: 10px; 
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
         }
-        .rank-list { 
-            /* 스크롤 제거하고 내용물에 맞게 */
-            overflow-y: visible; 
-            font-size: 14px; 
-            text-align: left; 
+
+        /* 시작 화면 랭킹 (짧게) */
+        #start-ranking {
+            overflow-y: visible;
         }
+
+        /* ★ 게임 오버 랭킹 (길게, 스크롤 가능) ★ */
+        #gameover-ranking {
+            max-height: 200px; /* 높이 제한 */
+            overflow-y: auto;  /* 스크롤 생성 */
+            padding-right: 5px;
+        }
+        /* 스크롤바 꾸미기 */
+        #gameover-ranking::-webkit-scrollbar { width: 5px; }
+        #gameover-ranking::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+        #gameover-ranking::-webkit-scrollbar-track { background: #111; }
+
+        .rank-list { font-size: 14px; text-align: left; }
         .rank-item { 
-            display: flex; 
-            justify-content: space-between; 
-            border-bottom: 1px dashed #333; 
-            padding: 12px 0; /* 간격 넓힘 */
-            font-weight: bold;
+            display: flex; justify-content: space-between; 
+            border-bottom: 1px dashed #333; padding: 8px 0; font-weight: bold;
         }
         .rank-item:last-child { border-bottom: none; }
 
@@ -58,12 +66,7 @@
         input { padding: 12px; font-size: 18px; text-align: center; background: #222; border: 2px solid #555; color: white; margin-bottom: 10px; border-radius: 5px; width: 200px; }
         
         #select-container { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
-        .plane-btn { 
-            width: 45px; height: 45px; 
-            border: 2px solid #444; opacity: 0.5; cursor: pointer; 
-            display: flex; justify-content: center; align-items: center;
-            background: #222; border-radius: 5px; position: relative;
-        }
+        .plane-btn { width: 45px; height: 45px; border: 2px solid #444; opacity: 0.5; cursor: pointer; display: flex; justify-content: center; align-items: center; background: #222; border-radius: 5px; position: relative; }
         .plane-btn.selected { border-color: #fff; opacity: 1.0; transform: scale(1.1); box-shadow: 0 0 10px #fff; background: #444; }
         .locked { opacity: 0.2; cursor: not-allowed; }
         
@@ -94,10 +97,12 @@
         <div id="game-over-screen" class="screen" style="display:none;">
             <h1 style="color:red; text-shadow: 3px 3px 0px #b71c1c; font-size: 35px; line-height: 1.5; text-align: center; padding-left: 0;">GAME<br>OVER</h1>
             <div id="final-score" style="font-size:28px; margin-bottom:10px;">SCORE: 0</div>
+            
             <div class="ranking-box">
-                <div style="text-align:center; color:#ffd700; margin-bottom:10px;">🏆 TOP 3</div>
+                <div style="text-align:center; color:#fff; margin-bottom:10px;">🏆 TOP 10 RANKING</div>
                 <div id="gameover-ranking" class="rank-list"></div>
             </div>
+            
             <div id="unlock-msg" style="color:yellow; margin-bottom:10px; font-size:16px;"></div>
             <button onclick="location.reload()">RESTART</button>
         </div>
@@ -117,38 +122,39 @@
         function initFirebase() { try { if (typeof firebase !== 'undefined' && !firebase.apps.length) { firebase.initializeApp(firebaseConfig); db = firebase.database(); isDbConnected = true; loadRanking(); } } catch (e) { document.getElementById('start-ranking').innerHTML = "오프라인 모드"; } }
         function saveScore(name, score) { if (!isDbConnected) return; try { db.ref('scores').push({ username: name || "Player", score: score, date: Date.now() }); } catch(e) {} }
         
-        // ★★★ 랭킹 로드 함수 수정 (Top 3 + 메달) ★★★
+        // ★★★ 랭킹 로드 함수 수정 (Start: 3명, Game Over: 10명) ★★★
         function loadRanking() { 
             if (!isDbConnected) return; 
             try { 
-                // limitToLast(3)으로 변경
-                db.ref('scores').orderByChild('score').limitToLast(3).once('value', (snapshot) => { 
+                // 10명까지 가져옴
+                db.ref('scores').orderByChild('score').limitToLast(10).once('value', (snapshot) => { 
                     const data = snapshot.val(); 
                     let list = []; 
                     if (data) { 
                         for (let key in data) list.push(data[key]); 
-                        list.sort((a, b) => b.score - a.score); // 점수 내림차순 정렬
+                        list.sort((a, b) => b.score - a.score); // 내림차순
                     } 
                     
                     const medals = ['🥇', '🥈', '🥉'];
-                    const colors = ['#ffd700', '#c0c0c0', '#cd7f32']; // 금, 은, 동 색상 코드
+                    const colors = ['#ffd700', '#c0c0c0', '#cd7f32'];
 
-                    const html = list.map((item, i) => {
+                    // 1. 시작 화면용 HTML (Top 3)
+                    const startHTML = list.slice(0, 3).map((item, i) => {
                         const medal = medals[i] || (i + 1) + '.';
                         const color = colors[i] || 'white';
-                        // 1등은 글씨를 조금 더 크게
                         const fontSize = i === 0 ? '16px' : '14px';
-                        
-                        return `
-                            <div class="rank-item" style="color:${color}; font-size:${fontSize}">
-                                <span>${medal} ${item.username}</span>
-                                <span>${item.score.toLocaleString()}</span>
-                            </div>
-                        `;
+                        return `<div class="rank-item" style="color:${color}; font-size:${fontSize}"><span>${medal} ${item.username}</span><span>${item.score.toLocaleString()}</span></div>`;
+                    }).join('');
+
+                    // 2. 게임 오버 화면용 HTML (Top 10)
+                    const endHTML = list.map((item, i) => {
+                        const medal = medals[i] || (i + 1) + '.'; // 1~3등 메달, 나머지는 숫자
+                        const color = colors[i] || '#ccc'; // 4등부터는 회색
+                        return `<div class="rank-item" style="color:${color};"><span>${medal} ${item.username}</span><span>${item.score.toLocaleString()}</span></div>`;
                     }).join('');
                     
-                    document.getElementById('start-ranking').innerHTML = html || "기록 없음"; 
-                    document.getElementById('gameover-ranking').innerHTML = html || "기록 없음"; 
+                    document.getElementById('start-ranking').innerHTML = startHTML || "기록 없음"; 
+                    document.getElementById('gameover-ranking').innerHTML = endHTML || "기록 없음"; 
                 }); 
             } catch(e){} 
         }
