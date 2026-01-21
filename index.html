@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 모바일 세이프티</title>
+    <title>픽셀 슈터: 모바일 풀 포커스</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -35,11 +35,16 @@
         .side-panel.right { align-items: center; justify-content: center; opacity: 0.5; }
         .empty-slot { width: 50px; height: 50px; border: 2px dashed #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #555; }
 
-        /* 게임 컨테이너 (PC 기본) */
-        #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; }
+        /* 게임 컨테이너 */
+        #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; transition: all 0.5s ease; /* 부드러운 크기 전환 */ }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        .hud-top { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; align-items: center; padding: 8px 0; z-index: 20; }
+        .hud-top { 
+            position: absolute; top: 10px; left: 0; width: 100%; 
+            background: rgba(0, 0, 0, 0.6); border-bottom: 1px solid rgba(255,255,255,0.1); 
+            display: flex; justify-content: space-around; align-items: center; 
+            padding: 8px 0; z-index: 20; 
+        }
         .hud-item { font-size: 10px; color: #fff; text-align: center; }
         .hud-label { color: #aaa; font-size: 8px; margin-bottom: 3px; display: block; }
         .hud-value { font-size: 12px; color: #fff; }
@@ -51,38 +56,46 @@
         #dev-indicator { position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-size: 10px; display: none; z-index: 50; text-shadow: 0 0 5px #00ff00; }
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         
-        /* ★★★ 모바일 최적화 (화면 줄어듬 + 상단 여백 확보) ★★★ */
+        /* ★★★ 모바일 최적화 (동적 레이아웃) ★★★ */
         @media (max-width: 800px) {
             body { 
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start; /* 상단부터 배치 */
-                padding-top: 60px; /* 주소창을 고려한 확실한 상단 여백 */
-                height: auto;
-                min-height: 100vh;
+                display: flex; flex-direction: column; justify-content: flex-start;
+                padding-top: 40px; /* 상단 여백 */
+                height: auto; min-height: 100vh;
             }
-            #main-layout { 
-                flex-direction: column; 
-                align-items: center; 
-                gap: 10px; 
-            }
+            #main-layout { flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+            
+            /* 1. 시작 화면 상태: 패널 숨김 & 게임 화면 확대 */
             #game-container { 
                 order: 1; 
-                width: 90%; /* 가로 여백 */
-                max-width: 400px;
-                /* ★ 핵심: 높이를 고정이 아니라 비율로 변경하여 화면에 맞춤 ★ */
-                height: auto;
-                aspect-ratio: 2 / 3; 
-                max-height: 70vh; /* 화면 높이의 70%를 넘지 않도록 제한 */
+                width: 95%; max-width: 500px; /* 더 넓게 */
+                height: auto; aspect-ratio: 2 / 3; 
+                max-height: 85vh; /* 화면을 거의 가득 채움 */
             }
-            .side-panel.right { display: flex; order: 2; width: 100%; max-width: 400px; height: auto; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; }
-            .side-panel.left { order: 3; width: 100%; max-width: 400px; height: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px; }
-            .panel-title { display: none; }
+            .side-panel.right, .side-panel.left { display: none; } /* 패널 숨김 */
+
+            /* 2. 게임 실행 중 상태 (.game-running): 패널 표시 & 게임 화면 축소 */
+            body.game-running #game-container {
+                width: 90%; max-width: 400px; /* 원래대로 복귀 */
+                max-height: 65vh; /* 하단 패널 공간 확보를 위해 높이 줄임 */
+            }
+            body.game-running .side-panel.right { 
+                display: flex; order: 2; width: 100%; max-width: 400px; height: auto; 
+                flex-direction: row; justify-content: center; gap: 15px; padding: 10px;
+                animation: fadeIn 0.5s;
+            }
+            body.game-running .side-panel.left { 
+                display: flex; order: 3; width: 100%; max-width: 400px; height: auto; 
+                flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px;
+                animation: fadeIn 0.5s;
+            }
             
-            /* 모바일에서 HUD 글씨 크기 조절 */
+            .panel-title { display: none; }
             .hud-item { font-size: 8px; }
             .hud-value { font-size: 10px; }
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         h1 { 
             font-family: 'Press Start 2P', cursive; font-size: 38px; margin-bottom: 20px; text-align: left; width: 100%; padding-left: 30px; box-sizing: border-box; 
@@ -350,7 +363,18 @@
 
         window.onload = () => {
             initFirebase(); try { const s = JSON.parse(localStorage.getItem('pixelShooterUnlocks')); if(s) unlocked = s; } catch(e){} renderSelectButtons();
-            document.getElementById('startBtn').onclick = () => { currentUsername = document.getElementById('username').value.trim() || "Player"; document.getElementById('start-screen').style.display = 'none'; try { initAudio(); } catch(e){} startGame(); };
+            
+            // ★★★ 게임 시작 버튼 클릭 이벤트 ★★★
+            document.getElementById('startBtn').onclick = () => { 
+                currentUsername = document.getElementById('username').value.trim() || "Player"; 
+                document.getElementById('start-screen').style.display = 'none'; 
+                // ★ 중요: body에 클래스 추가하여 모바일 레이아웃 변경 트리거
+                document.body.classList.add('game-running'); 
+                
+                try { initAudio(); } catch(e){} 
+                startGame(); 
+            };
+            
             document.getElementById('donateBtn').onclick = () => { player.timers.shield = Date.now() + 60000; updateUI(); alert("후원 감사! 쉴드 1분!"); };
             document.body.addEventListener('click', () => { try{initAudio(); if(!bgmPlaying) playBgm('intro');}catch(e){} }, {once:true});
         };
@@ -625,8 +649,8 @@
         }
         function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
         
+        // ★★★ 개발자 모드: 무적 확인 (체력 안 닳음) ★★★
         function hitPlayer() {
-            // ★★★ 개발자 모드: 무적 확인 (체력 안 닳음) ★★★
             if(isDevMode) return; 
             
             if(player.invincible > 0) return;
