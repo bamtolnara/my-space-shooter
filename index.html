@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 5단계 리워크</title>
+    <title>픽셀 슈터: 5단계 리메이크</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -637,15 +637,24 @@
                         for(let i=0; i<5; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
                     else if(stage === 5) { 
-                        // ★★★ 5단계 강화 (5발 + 고속) ★★★
+                        // ★★★ 5단계 보스 리워크 (4발 정밀 + 3발 확산) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        const bSpeed = 15; // 탄속 증가
-                        
-                        spawnBossBullet(bx, by, Math.cos(a)*bSpeed, Math.sin(a)*bSpeed, 'sniper'); // 중앙
-                        spawnBossBullet(bx, by, Math.cos(a-0.12)*bSpeed, Math.sin(a-0.12)*bSpeed, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.12)*bSpeed, Math.sin(a+0.12)*bSpeed, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a-0.25)*bSpeed, Math.sin(a-0.25)*bSpeed, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.25)*bSpeed, Math.sin(a+0.25)*bSpeed, 'sniper');
+                        const bSpeed = 11; // 탄속 11로 조정
+
+                        // 1. 정밀 조준 4발 (좁은 부채꼴)
+                        spawnBossBullet(bx, by, Math.cos(a-0.15)*bSpeed, Math.sin(a-0.15)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a-0.05)*bSpeed, Math.sin(a-0.05)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.05)*bSpeed, Math.sin(a+0.05)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.15)*bSpeed, Math.sin(a+0.15)*bSpeed, 'sniper');
+
+                        // 2. 흩뿌리기 3발 (랜덤 확산)
+                        for(let i=0; i<3; i++) {
+                            // 플레이어 방향 기준 좌우 1라디안(약 60도) 범위 내 랜덤
+                            const randA = a + (Math.random() - 0.5) * 1.0;
+                            // 속도도 약간 랜덤하게 하여 흩뿌리는 느낌 강화
+                            const randS = bSpeed * (0.8 + Math.random() * 0.4);
+                            spawnBossBullet(bx, by, Math.cos(randA)*randS, Math.sin(randA)*randS, 'sniper');
+                        }
                     }
                     else { 
                         if (boss.phase % 2 === 0) {
@@ -675,6 +684,7 @@
                     if(b.active && checkColl(b, boss)) {
                         boss.hp--; boss.hit = 5; b.active = false;
                         if(boss.hp <= 0) { 
+                            // 보스 클리어 보너스 (Ver 22.2 유지)
                             const bonuses = [0, 30000, 50000, 110000, 220000, 330000, 700000];
                             let reward = (stage <= 6) ? bonuses[stage] : 10000;
                             score += reward; 
