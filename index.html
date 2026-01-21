@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 밸런스 리파이닝</title>
+    <title>픽셀 슈터: 풀스크린 UI</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        /* 기본 레이아웃 */
+        /* 기본 레이아웃 (PC 기준) */
         body { 
             margin: 0; background: #050505; 
             display: flex; justify-content: center; align-items: center; 
@@ -20,7 +20,7 @@
 
         #main-layout { display: flex; align-items: flex-start; justify-content: center; gap: 20px; width: 100%; max-width: 1200px; padding: 10px; box-sizing: border-box; }
 
-        /* 좌측 패널 */
+        /* 좌측/우측 패널 */
         .side-panel { width: 130px; background: #111; border: 2px solid #333; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 0 20px rgba(0,0,0,0.8); height: 600px; box-sizing: border-box; }
         .panel-title { color: #888; font-size: 10px; text-align: center; margin-bottom: 5px; border-bottom: 2px solid #444; padding-bottom: 5px; }
         
@@ -60,33 +60,64 @@
             background: rgba(0,0,0,0.95); 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
             z-index: 100; 
+            overflow-y: auto; /* 내용이 넘치면 스크롤 */
         }
         
-        /* 모바일 최적화 */
+        /* ★★★ 모바일 최적화 (핵심 변경 구간) ★★★ */
         @media (max-width: 800px) {
-            body { 
-                display: flex; flex-direction: column; justify-content: flex-start;
-                padding-top: 40px; height: auto; min-height: 100vh;
-            }
-            #main-layout { flex-direction: column; align-items: center; gap: 10px; width: 100%; }
             
-            #game-container { 
-                order: 1; width: 95%; max-width: 500px; height: auto; aspect-ratio: 2 / 3; max-height: 85vh; 
+            /* 1. 기본 상태 (시작화면/게임오버): 전체 화면 사용 */
+            body { 
+                display: block; padding: 0; margin: 0; height: 100vh; overflow: hidden;
             }
+            #main-layout { 
+                padding: 0; width: 100%; height: 100%; gap: 0; flex-direction: column; align-items: center; justify-content: center;
+            }
+
+            #game-container { 
+                width: 100vw; height: 100vh; /* 화면 꽉 채움 */
+                max-width: none; max-height: none;
+                border: none;
+                aspect-ratio: unset; /* 비율 해제 */
+            }
+
+            /* 패널은 시작/엔딩 때 숨김 */
             .side-panel.right, .side-panel.left { display: none; } 
 
-            body.game-running #game-container { width: 90%; max-width: 400px; max-height: 65vh; }
-            body.game-running .side-panel.right { display: flex; order: 2; width: 100%; max-width: 400px; height: auto; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; animation: fadeIn 0.5s; }
-            body.game-running .side-panel.left { display: flex; order: 3; width: 100%; max-width: 400px; height: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px; animation: fadeIn 0.5s; }
+            /* 2. 게임 실행 중 상태 (.game-running): 화면 줄이고 패널 표시 */
+            body.game-running {
+                display: flex; flex-direction: column; justify-content: flex-start;
+                padding-top: 40px; 
+                height: auto; min-height: 100vh; overflow-y: auto;
+            }
+            body.game-running #main-layout { padding: 10px; gap: 10px; height: auto; }
+            
+            body.game-running #game-container { 
+                width: 95%; max-width: 400px; 
+                height: auto; aspect-ratio: 2 / 3; max-height: 65vh; 
+                border: 2px solid #333;
+            }
+            
+            body.game-running .side-panel.right { 
+                display: flex; order: 2; width: 100%; max-width: 400px; height: auto; 
+                flex-direction: row; justify-content: center; gap: 15px; padding: 10px; 
+                animation: fadeIn 0.5s;
+            }
+            body.game-running .side-panel.left { 
+                display: flex; order: 3; width: 100%; max-width: 400px; height: auto; 
+                flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px; 
+                animation: fadeIn 0.5s;
+            }
             
             .panel-title { display: none; }
             .hud-item { font-size: 8px; }
             .hud-value { font-size: 10px; }
             
-            #username { width: 80%; padding: 15px; font-size: 20px; margin-bottom: 20px; }
-            #startBtn, #game-over-screen button { width: 80%; padding: 20px; font-size: 24px; margin-top: 20px; }
-            #donateBtn { width: 50%; padding: 12px; font-size: 14px; }
-            .ranking-box { width: 90%; margin-bottom: 30px; }
+            /* 버튼 및 입력창 크기 확대 */
+            #username { width: 70%; padding: 15px; font-size: 18px; margin-bottom: 20px; }
+            #startBtn, #game-over-screen button { width: 80%; padding: 20px; font-size: 20px; margin-top: 20px; }
+            #donateBtn { width: 60%; padding: 15px; font-size: 14px; margin-bottom: 20px; }
+            .ranking-box { width: 90%; margin-bottom: 20px; max-height: 30vh; overflow-y: auto; }
         }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -95,7 +126,11 @@
             font-family: 'Press Start 2P', cursive; font-size: 38px; margin-bottom: 20px; text-align: left; width: 100%; padding-left: 30px; box-sizing: border-box; 
             color: #fff; text-shadow: 4px 4px 0px #00e5ff; line-height: 1.5; white-space: normal; -webkit-text-stroke: 0; animation: none; 
             cursor: pointer; user-select: none;
+            touch-action: manipulation; 
+            position: relative; 
+            z-index: 1001; 
         }
+
         #game-over-screen h1 { text-align: center; padding-left: 0; font-size: 48px; color: #ff1744; text-shadow: 4px 4px 0 #b71c1c; cursor: default; width: 100%; }
         
         .ranking-box { width: 85%; background: rgba(10,10,10,0.95); border: 1px solid #444; box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); padding: 15px; margin-bottom: 20px; border-radius: 5px; }
@@ -326,6 +361,18 @@
         window.addEventListener('keydown', e=>keys[e.code]=true);
         window.addEventListener('keyup', e=>keys[e.code]=false);
 
+        // ★★★ 제목 클릭 이벤트 (시각적 효과 제거) ★★★
+        document.getElementById('game-title').addEventListener('click', () => {
+            titleClickCount++;
+            if(titleClickCount >= 5 && !isDevMode) {
+                isDevMode = true;
+                unlocked = [0,1,2,3,4,5,6,7,8,9]; 
+                renderSelectButtons();
+                document.getElementById('dev-indicator').style.display = 'block';
+                alert("🔰 DEV MODE ON 🔰\n무적, 전체해금, 랭킹저장 안됨");
+            }
+        });
+
         function renderSelectButtons() {
             const c = document.getElementById('select-container'); c.innerHTML = "";
             PLANES.forEach((p, i) => {
@@ -533,7 +580,7 @@
                     if(b.active && checkColl(b, boss)) {
                         boss.hp--; boss.hit = 5; b.active = false;
                         if(boss.hp <= 0) { 
-                            // ★★★ 보스 클리어 보너스 수정 ( Ver 22.2 ) ★★★
+                            // 보스 클리어 보너스 (Ver 22.2 유지)
                             const bonuses = [0, 30000, 50000, 110000, 220000, 330000, 700000];
                             let reward = (stage <= 6) ? bonuses[stage] : 10000;
                             score += reward; 
@@ -555,7 +602,8 @@
                         e.hp--; e.hit = 5; b.active = false;
                         if(e.hp <= 0) { 
                             e.active = false; 
-                            score += 800 + (stage * 150);
+                            // ★★★ 몬스터 사냥 점수 300점 고정 (Ver 22.5) ★★★
+                            score += 300; 
                             updateUI(); 
                             createParticle(e.x, e.y); playSound('explosion'); if(Math.random() < 0.1) dropItem(e.x, e.y); 
                         }
@@ -635,7 +683,7 @@
         function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
         
         function hitPlayer() {
-            if(isDevMode) return; 
+            if(isDevMode) return; // 개발자 모드면 무적
             
             if(player.invincible > 0) return;
             if(player.shield) { 
