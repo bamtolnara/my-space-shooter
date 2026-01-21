@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 5단계 강화</title>
+    <title>픽셀 슈터: 5단계 리워크</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -637,12 +637,15 @@
                         for(let i=0; i<5; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
                     else if(stage === 5) { 
-                        // ★★★ 5단계 강화 (4발 발사) ★★★
+                        // ★★★ 5단계 강화 (5발 + 고속) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.2)*10, Math.sin(a-0.2)*10, 'sniper'); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.07)*10, Math.sin(a-0.07)*10, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.07)*10, Math.sin(a+0.07)*10, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.2)*10, Math.sin(a+0.2)*10, 'sniper');
+                        const bSpeed = 15; // 탄속 증가
+                        
+                        spawnBossBullet(bx, by, Math.cos(a)*bSpeed, Math.sin(a)*bSpeed, 'sniper'); // 중앙
+                        spawnBossBullet(bx, by, Math.cos(a-0.12)*bSpeed, Math.sin(a-0.12)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.12)*bSpeed, Math.sin(a+0.12)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a-0.25)*bSpeed, Math.sin(a-0.25)*bSpeed, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.25)*bSpeed, Math.sin(a+0.25)*bSpeed, 'sniper');
                     }
                     else { 
                         if (boss.phase % 2 === 0) {
