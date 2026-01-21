@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 모바일 풀 포커스</title>
+    <title>픽셀 슈터: 모바일 UI 완성</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -36,7 +36,7 @@
         .empty-slot { width: 50px; height: 50px; border: 2px dashed #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #555; }
 
         /* 게임 컨테이너 */
-        #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; transition: all 0.5s ease; /* 부드러운 크기 전환 */ }
+        #game-container { position: relative; width: 400px; height: 600px; background: #000; box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); border: 2px solid #333; flex-shrink: 0; overflow: hidden; transition: all 0.5s ease; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
         .hud-top { 
@@ -54,41 +54,39 @@
         .ui-layer { position: absolute; pointer-events: none; width: 100%; height: 100%; top: 0; left: 0; z-index: 10; }
         #msg-ui { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 40px; display: none; text-shadow: 0 0 20px red; color: red; animation: blink 0.5s infinite; }
         #dev-indicator { position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-size: 10px; display: none; z-index: 50; text-shadow: 0 0 5px #00ff00; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         
-        /* ★★★ 모바일 최적화 (동적 레이아웃) ★★★ */
+        .screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 100; 
+        }
+        
+        /* ★★★ 모바일 최적화 (UI 꽉 채우기) ★★★ */
         @media (max-width: 800px) {
             body { 
                 display: flex; flex-direction: column; justify-content: flex-start;
-                padding-top: 40px; /* 상단 여백 */
-                height: auto; min-height: 100vh;
+                padding-top: 40px; height: auto; min-height: 100vh;
             }
             #main-layout { flex-direction: column; align-items: center; gap: 10px; width: 100%; }
             
-            /* 1. 시작 화면 상태: 패널 숨김 & 게임 화면 확대 */
             #game-container { 
-                order: 1; 
-                width: 95%; max-width: 500px; /* 더 넓게 */
-                height: auto; aspect-ratio: 2 / 3; 
-                max-height: 85vh; /* 화면을 거의 가득 채움 */
+                order: 1; width: 95%; max-width: 500px; height: auto; aspect-ratio: 2 / 3; max-height: 85vh; 
             }
-            .side-panel.right, .side-panel.left { display: none; } /* 패널 숨김 */
+            
+            /* 패널은 기본적으로 숨김 (시작화면, 게임오버 화면에서 깔끔하게) */
+            .side-panel.right, .side-panel.left { display: none; } 
 
-            /* 2. 게임 실행 중 상태 (.game-running): 패널 표시 & 게임 화면 축소 */
-            body.game-running #game-container {
-                width: 90%; max-width: 400px; /* 원래대로 복귀 */
-                max-height: 65vh; /* 하단 패널 공간 확보를 위해 높이 줄임 */
-            }
-            body.game-running .side-panel.right { 
-                display: flex; order: 2; width: 100%; max-width: 400px; height: auto; 
-                flex-direction: row; justify-content: center; gap: 15px; padding: 10px;
-                animation: fadeIn 0.5s;
-            }
-            body.game-running .side-panel.left { 
-                display: flex; order: 3; width: 100%; max-width: 400px; height: auto; 
-                flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px;
-                animation: fadeIn 0.5s;
-            }
+            /* ★ 게임 실행 중일 때만 패널 표시 ★ */
+            body.game-running #game-container { width: 90%; max-width: 400px; max-height: 65vh; }
+            body.game-running .side-panel.right { display: flex; order: 2; width: 100%; max-width: 400px; height: auto; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; animation: fadeIn 0.5s; }
+            body.game-running .side-panel.left { display: flex; order: 3; width: 100%; max-width: 400px; height: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px; animation: fadeIn 0.5s; }
+            
+            /* ★ 모바일 버튼/입력창 크게 ★ */
+            #username { width: 80%; padding: 15px; font-size: 20px; margin-bottom: 20px; }
+            #startBtn, #game-over-screen button { width: 80%; padding: 20px; font-size: 24px; margin-top: 20px; }
+            #donateBtn { width: 50%; padding: 12px; font-size: 14px; }
+            .ranking-box { width: 90%; margin-bottom: 30px; }
             
             .panel-title { display: none; }
             .hud-item { font-size: 8px; }
@@ -102,7 +100,7 @@
             color: #fff; text-shadow: 4px 4px 0px #00e5ff; line-height: 1.5; white-space: normal; -webkit-text-stroke: 0; animation: none; 
             cursor: pointer; user-select: none;
         }
-        #game-over-screen h1 { text-align: center; padding-left: 0; font-size: 55px; color: #ff1744; text-shadow: 4px 4px 0 #b71c1c; cursor: default; }
+        #game-over-screen h1 { text-align: center; padding-left: 0; font-size: 48px; color: #ff1744; text-shadow: 4px 4px 0 #b71c1c; cursor: default; width: 100%; }
         
         .ranking-box { width: 85%; background: rgba(10,10,10,0.95); border: 1px solid #444; box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); padding: 15px; margin-bottom: 20px; border-radius: 5px; }
         #start-ranking { overflow-y: visible; }
@@ -183,7 +181,7 @@
         const FPS_INTERVAL = 1000/FPS;
         const GAME_WIDTH = 400;
         const GAME_HEIGHT = 600;
-        const ITEM_DURATION = 10000; 
+        const ITEM_DURATION = 20000; 
 
         let isDevMode = false;
         let titleClickCount = 0;
@@ -363,18 +361,7 @@
 
         window.onload = () => {
             initFirebase(); try { const s = JSON.parse(localStorage.getItem('pixelShooterUnlocks')); if(s) unlocked = s; } catch(e){} renderSelectButtons();
-            
-            // ★★★ 게임 시작 버튼 클릭 이벤트 ★★★
-            document.getElementById('startBtn').onclick = () => { 
-                currentUsername = document.getElementById('username').value.trim() || "Player"; 
-                document.getElementById('start-screen').style.display = 'none'; 
-                // ★ 중요: body에 클래스 추가하여 모바일 레이아웃 변경 트리거
-                document.body.classList.add('game-running'); 
-                
-                try { initAudio(); } catch(e){} 
-                startGame(); 
-            };
-            
+            document.getElementById('startBtn').onclick = () => { currentUsername = document.getElementById('username').value.trim() || "Player"; document.getElementById('start-screen').style.display = 'none'; document.body.classList.add('game-running'); try { initAudio(); } catch(e){} startGame(); };
             document.getElementById('donateBtn').onclick = () => { player.timers.shield = Date.now() + 60000; updateUI(); alert("후원 감사! 쉴드 1분!"); };
             document.body.addEventListener('click', () => { try{initAudio(); if(!bgmPlaying) playBgm('intro');}catch(e){} }, {once:true});
         };
@@ -494,13 +481,16 @@
                 }
             }
 
+            // ★★★ 보스 등장 점수 ( Ver 21.0 수정 ) ★★★
+            const reqList = [0, 10000, 30000, 70000, 150000, 300000, 600000]; // 밸런스 조정
             let bossReq = 0;
-            if(stage <= 6) bossReq = [0, 5000, 20000, 50000, 100000, 200000, 400000][stage];
-            else bossReq = 400000 + (stage - 6) * 5000;
+            if(stage <= 6) bossReq = reqList[stage];
+            else bossReq = 600000 + (stage - 6) * 10000; 
 
             if(!boss && score >= bossReq) {
                 const sMap = SPRITE_MAP[`boss_s${Math.min(stage,6)}`];
-                boss = { x: GAME_WIDTH/2 - sMap.w/2, y: -sMap.h, w: sMap.w, h: sMap.h, hp: stage*75, maxHp: stage*75, dir: 1, hit: 0, lastShot: 0 };
+                // ★★★ 보스 HP 너프 적용 ( Ver 21.1 ) ★★★
+                boss = { x: GAME_WIDTH/2 - sMap.w/2, y: -sMap.h, w: sMap.w, h: sMap.h, hp: stage*60, maxHp: stage*60, dir: 1, hit: 0, lastShot: 0, phase: 0 };
                 document.getElementById('msg-ui').style.display = 'block'; setTimeout(() => document.getElementById('msg-ui').style.display = 'none', 3000);
             }
 
@@ -513,7 +503,8 @@
 
             if(boss) {
                 if(boss.y < 50) boss.y++; boss.x += boss.dir * (2 + stage*0.2); if(boss.x < 0 || boss.x > GAME_WIDTH - boss.w) boss.dir *= -1;
-                const fireRate = Math.max(250, 900 - (stage * 100));
+                // ★★★ 보스 공속 너프 ( Ver 21.1 ) ★★★
+                const fireRate = Math.max(400, 1000 - (stage * 80)); 
                 
                 if(Date.now() - boss.lastShot > fireRate) {
                     const bx = boss.x + boss.w/2, by = boss.y + boss.h;
@@ -522,29 +513,38 @@
                     else if(stage === 2) { 
                         spawnBossBullet(bx-15, by, 0, 6); spawnBossBullet(bx, by, 0, 6); spawnBossBullet(bx+15, by, 0, 6); 
                     }
-                    else if(stage === 3) { 
+                    else if(stage === 3) { // ★★★ 3단계 너프: 3발 ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        for(let k=-0.4; k<=0.4; k+=0.2) spawnBossBullet(bx, by, Math.cos(a+k)*6, Math.sin(a+k)*6); 
+                        for(let k=-0.2; k<=0.2; k+=0.2) spawnBossBullet(bx, by, Math.cos(a+k)*6, Math.sin(a+k)*6); 
                     }
-                    else if(stage === 4) { 
-                        for(let i=0; i<7; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
+                    else if(stage === 4) { // ★★★ 4단계 너프: 5발 ★★★
+                        for(let i=0; i<5; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
-                    else if(stage === 5) { 
+                    else if(stage === 5) { // ★★★ 5단계 너프: 3발 정밀 (속도 10) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        spawnBossBullet(bx, by, Math.cos(a)*12, Math.sin(a)*12, 'sniper'); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.2)*12, Math.sin(a-0.2)*12, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.2)*12, Math.sin(a+0.2)*12, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a)*10, Math.sin(a)*10, 'sniper'); 
+                        spawnBossBullet(bx, by, Math.cos(a-0.15)*10, Math.sin(a-0.15)*10, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.15)*10, Math.sin(a+0.15)*10, 'sniper');
                     }
-                    else { 
-                        if(boss.angle === undefined) boss.angle = 0;
-                        for(let i=0; i<12; i++) {
-                            const rad = boss.angle + (Math.PI * 2 / 12 * i);
-                            const vy = Math.sin(rad) * 8;
-                            if (vy > -2) { 
-                                spawnBossBullet(bx, by, Math.cos(rad)*8, vy);
+                    else { // ★★★ 6단계+: 하이브리드 패턴 (나선환 <-> 샷건) ★★★
+                        if (boss.phase % 2 === 0) {
+                            // 나선환 (12방향, 하단 집중)
+                            if(boss.angle === undefined) boss.angle = 0;
+                            for(let i=0; i<12; i++) {
+                                const rad = boss.angle + (Math.PI * 2 / 12 * i);
+                                const vy = Math.sin(rad) * 8;
+                                if (vy > -2) { 
+                                    spawnBossBullet(bx, by, Math.cos(rad)*8, vy);
+                                }
+                            }
+                            boss.angle += 0.2; 
+                        } else {
+                            // 샷건 (7발 난사, 4단계 강화판)
+                            for(let i=0; i<7; i++) {
+                                spawnBossBullet(bx, by, (Math.random()-0.5)*12, Math.random()*5+7);
                             }
                         }
-                        boss.angle += 0.15; 
+                        boss.phase++; // 패턴 교체
                     }
                     boss.lastShot = Date.now();
                 }
@@ -554,8 +554,9 @@
                     if(b.active && checkColl(b, boss)) {
                         boss.hp--; boss.hit = 5; b.active = false;
                         if(boss.hp <= 0) { 
-                            const bonuses = [0, 5000, 20000, 40000, 90000, 190000, 290000];
-                            let reward = (stage <= 6) ? bonuses[stage] : 5000;
+                            // ★★★ 보스 클리어 보너스 상향 ( Ver 21.0 수정 ) ★★★
+                            const bonuses = [0, 30000, 70000, 150000, 300000, 500000, 700000];
+                            let reward = (stage <= 6) ? bonuses[stage] : 10000;
                             score += reward; 
                             stage++; updateUI(); createParticle(boss.x, boss.y, 50); dropItem(boss.x+boss.w/2, boss.y+boss.h/2, 'O'); boss = null; POOLS.bossBullets.forEach(bb=>bb.active=false); playSound('boss_die'); 
                         }
@@ -573,7 +574,13 @@
                 POOLS.bullets.forEach(b => {
                     if(b.active && checkColl(b, e)) {
                         e.hp--; e.hit = 5; b.active = false;
-                        if(e.hp <= 0) { e.active = false; score += 100; updateUI(); createParticle(e.x, e.y); playSound('explosion'); if(Math.random() < 0.1) dropItem(e.x, e.y); }
+                        if(e.hp <= 0) { 
+                            e.active = false; 
+                            // ★★★ 몬스터 사냥 점수 대폭 상향 ( Ver 21.0 수정 ) ★★★
+                            score += 800 + (stage * 150);
+                            updateUI(); 
+                            createParticle(e.x, e.y); playSound('explosion'); if(Math.random() < 0.1) dropItem(e.x, e.y); 
+                        }
                     }
                 });
             });
@@ -649,9 +656,8 @@
         }
         function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
         
-        // ★★★ 개발자 모드: 무적 확인 (체력 안 닳음) ★★★
         function hitPlayer() {
-            if(isDevMode) return; 
+            if(isDevMode) return; // 개발자 모드면 무적
             
             if(player.invincible > 0) return;
             if(player.shield) { 
@@ -667,6 +673,7 @@
 
                 if(player.hp <= 0) { 
                     isRunning = false; saveScore(currentUsername, score); checkUnlock(); try { stopBgm(); playBgm('end'); } catch(e){}
+                    document.body.classList.remove('game-running'); // ★★★ 게임 오버 시 모바일 UI 원상복구 ★★★
                     document.getElementById('final-score').innerText = "SCORE: " + score; document.getElementById('game-over-screen').style.display = 'flex';
                 }
             }
