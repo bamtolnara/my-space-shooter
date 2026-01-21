@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 코드 최적화</title>
+    <title>픽셀 슈터: 5단계 강화</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -159,7 +159,12 @@
 
         <div id="game-container">
             <canvas id="gameCanvas"></canvas>
-            <div id="pause-screen"><h2>PAUSED</h2><button id="resumeBtn">RESUME</button></div>
+            
+            <div id="pause-screen">
+                <h2>PAUSED</h2>
+                <button id="resumeBtn">RESUME</button>
+            </div>
+
             <div class="hud-top">
                 <div class="hud-item"><span class="hud-label">SCORE</span><span id="ui-score" class="hud-value">0</span></div>
                 <div class="hud-item"><span class="hud-label">STAGE</span><span id="ui-stage" class="hud-value">1</span></div>
@@ -288,7 +293,7 @@
         ];
 
         const canvas = document.getElementById('gameCanvas'); 
-        const ctx = canvas.getContext('2d', { alpha: false }); // 렌더링 최적화 (알파 채널 끔)
+        const ctx = canvas.getContext('2d', { alpha: false }); 
         canvas.width = GAME_WIDTH; canvas.height = GAME_HEIGHT;
 
         const ATLAS = document.createElement('canvas'); const ATLAS_CTX = ATLAS.getContext('2d'); const SPRITE_MAP = {}; let atlasX = 0;
@@ -302,7 +307,6 @@
         }
         
         function initAtlas() {
-            // ... (기존 아틀라스 생성 코드 동일) ...
             PLANES.forEach((p, i) => bufferSprite(`plane_${i}`, SPRITES.planes[i], p.color, p.sub, p.shade));
             bufferSprite('drone', SPRITES.drone, '#00ffff', 'white', '#00aaaa');
             STAGE_COLORS.forEach((c, i) => {
@@ -332,7 +336,6 @@
         const POOLS = { bullets: createPool(200), bossBullets: createPool(300), enemies: createPool(70), particles: createPool(200), items: createPool(20) };
         function createPool(size) { return Array.from({ length: size }, () => ({ active: false })); }
         function getFromPool(pool) { 
-            // ★★★ 코드 레벨 최적화 1: for 루프 사용 (성능 향상) ★★★
             for(let i=0; i<pool.length; i++) {
                 if(!pool[i].active) return pool[i]; 
             }
@@ -353,7 +356,6 @@
         const isMobile = window.innerWidth <= 800;
         const STAR_COUNT = isMobile ? 30 : 80; 
 
-        // ★★★ 코드 레벨 최적화 2: for 루프 사용 ★★★
         for(let i=0; i<STAR_COUNT; i++) {
             const speed = Math.random() < 0.2 ? Math.random()*20 + 10 : Math.random()*2 + 0.5;
             stars.push({ x: Math.random()*GAME_WIDTH, y: Math.random()*GAME_HEIGHT, w: speed>5?1:2, h: speed>5?Math.random()*30+10:2, speed: speed, color: speed>5?`rgba(255,255,255,${Math.random()*0.3})`:`rgba(255,255,255,${Math.random()*0.8})` });
@@ -390,7 +392,6 @@
         function renderSelectButtons() {
             const c = document.getElementById('select-container'); c.innerHTML = "";
             
-            // ★★★ forEach -> for 최적화 ★★★
             for(let i=0; i<PLANES.length; i++) {
                 const p = PLANES[i];
                 const btn = document.createElement('div'); 
@@ -505,7 +506,6 @@
                 timers: { power: 0, speed: 0, shield: 0, fire: 0 }
             };
             
-            // ★★★ 객체 풀 초기화 시 for 루프 사용 ★★★
             const poolKeys = Object.keys(POOLS);
             for(let i=0; i<poolKeys.length; i++) {
                 const pool = POOLS[poolKeys[i]];
@@ -543,7 +543,6 @@
             if(keys['ArrowUp']) player.y -= player.speed; if(keys['ArrowDown']) player.y += player.speed;
             player.x = Math.max(0, Math.min(GAME_WIDTH - player.w, player.x)); player.y = Math.max(0, Math.min(GAME_HEIGHT - player.h, player.y));
 
-            // ★★★ for 루프 최적화 (별 이동) ★★★
             for(let i=0; i<stars.length; i++) {
                 const s = stars[i];
                 s.y += s.speed; 
@@ -551,7 +550,6 @@
             }
 
             const centerX = player.x + (player.w/2), droneW = SPRITE_MAP['drone'].w;
-            // ★★★ for 루프 최적화 (드론) ★★★
             for(let i=0; i<player.drones.length; i++) {
                 const d = player.drones[i];
                 const tx = centerX + (i === 0 ? -50 : 50) - (droneW / 2), ty = player.y + 10; 
@@ -612,7 +610,6 @@
                 document.getElementById('msg-ui').style.display = 'block'; setTimeout(() => document.getElementById('msg-ui').style.display = 'none', 3000);
             }
 
-            // ★★★ for 루프 최적화 (총알 이동) ★★★
             for(let i=0; i<POOLS.bullets.length; i++) {
                 const b = POOLS.bullets[i];
                 if(!b.active) continue; 
@@ -640,10 +637,12 @@
                         for(let i=0; i<5; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
                     else if(stage === 5) { 
+                        // ★★★ 5단계 강화 (4발 발사) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        spawnBossBullet(bx, by, Math.cos(a)*10, Math.sin(a)*10, 'sniper'); 
-                        spawnBossBullet(bx, by, Math.cos(a-0.15)*10, Math.sin(a-0.15)*10, 'sniper');
-                        spawnBossBullet(bx, by, Math.cos(a+0.15)*10, Math.sin(a+0.15)*10, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a-0.2)*10, Math.sin(a-0.2)*10, 'sniper'); 
+                        spawnBossBullet(bx, by, Math.cos(a-0.07)*10, Math.sin(a-0.07)*10, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.07)*10, Math.sin(a+0.07)*10, 'sniper');
+                        spawnBossBullet(bx, by, Math.cos(a+0.2)*10, Math.sin(a+0.2)*10, 'sniper');
                     }
                     else { 
                         if (boss.phase % 2 === 0) {
@@ -668,7 +667,6 @@
                 if(boss.hit > 0) boss.hit--;
                 if(checkColl(player, boss)) hitPlayer();
                 
-                // ★★★ for 루프 최적화 (보스 피격) ★★★
                 for(let i=0; i<POOLS.bullets.length; i++) {
                     const b = POOLS.bullets[i];
                     if(b.active && checkColl(b, boss)) {
@@ -678,7 +676,6 @@
                             let reward = (stage <= 6) ? bonuses[stage] : 10000;
                             score += reward; 
                             stage++; updateUI(); createParticle(boss.x, boss.y, 50); dropItem(boss.x+boss.w/2, boss.y+boss.h/2, 'O'); boss = null; 
-                            // 보스 총알 모두 제거
                             for(let j=0; j<POOLS.bossBullets.length; j++) POOLS.bossBullets[j].active = false;
                             playSound('boss_die'); 
                         }
@@ -686,7 +683,6 @@
                 }
             }
 
-            // ★★★ for 루프 최적화 (보스 총알 이동) ★★★
             for(let i=0; i<POOLS.bossBullets.length; i++) {
                 const b = POOLS.bossBullets[i];
                 if(!b.active) continue; 
@@ -695,7 +691,6 @@
                 if(checkColl(player, {x: b.x-5, y: b.y-5, w: 10, h: 10})) hitPlayer(); 
             }
 
-            // ★★★ for 루프 최적화 (적 이동 및 피격) ★★★
             for(let i=0; i<POOLS.enemies.length; i++) {
                 const e = POOLS.enemies[i];
                 if(!e.active) continue;
@@ -713,13 +708,12 @@
                             updateUI(); 
                             createParticle(e.x, e.y, 5); 
                             playSound('explosion'); if(Math.random() < 0.1) dropItem(e.x, e.y); 
-                            break; // 총알 하나에 적 하나만
+                            break; 
                         }
                     }
                 }
             }
 
-            // ★★★ for 루프 최적화 (아이템) ★★★
             for(let i=0; i<POOLS.items.length; i++) {
                 const it = POOLS.items[i];
                 if(it.active) { 
@@ -729,7 +723,6 @@
                 }
             }
 
-            // ★★★ for 루프 최적화 (파티클) ★★★
             for(let i=0; i<POOLS.particles.length; i++) {
                 const p = POOLS.particles[i];
                 if(p.active) { 
