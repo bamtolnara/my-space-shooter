@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>픽셀 슈터: 하이퍼 최적화</title>
+    <title>픽셀 슈터: 해금 리셋</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -45,6 +45,7 @@
         .side-panel.right { align-items: center; justify-content: center; opacity: 0.5; }
         .empty-slot { width: 50px; height: 50px; border: 2px dashed #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #555; }
 
+        /* 게임 컨테이너 */
         #game-container { 
             position: relative; width: 400px; height: 600px; background: #000; 
             box-shadow: 0 0 50px rgba(0, 229, 255, 0.1); 
@@ -202,6 +203,9 @@
         const GAME_WIDTH = 400;
         const GAME_HEIGHT = 600;
         const ITEM_DURATION = 20000; 
+        
+        // ★★★ 키 변경으로 기존 유저 해금 초기화 ★★★
+        const STORAGE_KEY = 'pixelShooterUnlocks_v2'; 
 
         let isDevMode = false;
         let titleClickCount = 0;
@@ -267,17 +271,18 @@
             ]
         };
 
+        // ★★★ 새로운 해금 조건 설정 ★★★
         const PLANES = [
-            { name: "Basic", speed: 5, req: 0, color: "#e0e0e0", sub: "#00ffff", shade: "#9e9e9e", bullet: "basic", bSpeed: 8 },
-            { name: "Speed", speed: 9, req: 50000, color: "#448aff", sub: "#ffff00", shade: "#1565c0", bullet: "beam", bSpeed: 16 },
-            { name: "Tank", speed: 4, req: 100000, color: "#ff5252", sub: "#ffc107", shade: "#c62828", bullet: "rocket", bSpeed: 10 },
-            { name: "Stealth", speed: 6, req: 150000, color: "#90caf9", sub: "#ffffff", shade: "#42a5f5", bullet: "beam", bSpeed: 16 },
-            { name: "X-Wing", speed: 7, req: 200000, color: "#ffab91", sub: "#ff5722", shade: "#d84315", bullet: "basic", bSpeed: 9 },
-            { name: "Viper", speed: 8, req: 250000, color: "#69f0ae", sub: "#e040fb", shade: "#00c853", bullet: "plasma", bSpeed: 12 },
-            { name: "Bomber", speed: 3, req: 300000, color: "#795548", sub: "#ffeb3b", shade: "#3e2723", bullet: "rocket", bSpeed: 10 },
-            { name: "Alien", speed: 7, req: 350000, color: "#b2ff59", sub: "#f44336", shade: "#64dd17", bullet: "plasma", bSpeed: 12 },
-            { name: "Twin", speed: 6, req: 400000, color: "#ff4081", sub: "#80d8ff", shade: "#c51162", bullet: "basic", bSpeed: 9 },
-            { name: "Crown", speed: 5, req: 450000, color: "#ffd700", sub: "#ffffff", shade: "#ff6f00", bullet: "beam", bSpeed: 16 }
+            // 1. BASIC: 기본 지급
+            { name: "Basic", speed: 5, hp: 3, rate: 90, unlockType: 'default', color: "#e0e0e0", sub: "#00ffff", shade: "#9e9e9e", bullet: "basic", bSpeed: 8 },
+            // 2. SONIC: 점수 40만점
+            { name: "Sonic", speed: 9, hp: 2, rate: 60, unlockType: 'score', req: 400000, color: "#448aff", sub: "#ffff00", shade: "#1565c0", bullet: "plasma", bSpeed: 12 },
+            // 3. TANK: 5스테이지 클리어 (Stage > 5)
+            { name: "Tank", speed: 4, hp: 6, rate: 120, unlockType: 'stage', req: 5, color: "#ff5252", sub: "#ffc107", shade: "#c62828", bullet: "rocket", bSpeed: 8 },
+            // 4. SNIPER: 준비중
+            { name: "Sniper", speed: 6, hp: 3, rate: 150, unlockType: 'locked', color: "#90caf9", sub: "#ffffff", shade: "#42a5f5", bullet: "beam", bSpeed: 25 },
+            // 5. PRIME: 준비중
+            { name: "Prime", speed: 7, hp: 4, rate: 80, unlockType: 'locked', color: "#ffd700", sub: "#ffffff", shade: "#ff6f00", bullet: "beam", bSpeed: 10 }
         ];
 
         const STAGE_COLORS = [
@@ -348,6 +353,9 @@
 
         const isMobile = window.innerWidth <= 800;
         const STAR_COUNT = isMobile ? 30 : 80; 
+        
+        const PARTICLE_COLORS = [];
+        for(let i=0; i<20; i++) PARTICLE_COLORS.push(`hsl(${i*18},100%,50%)`);
 
         for(let i=0; i<STAR_COUNT; i++) {
             const speed = Math.random() < 0.2 ? Math.random()*20 + 10 : Math.random()*2 + 0.5;
@@ -375,42 +383,70 @@
             titleClickCount++;
             if(titleClickCount >= 5 && !isDevMode) {
                 isDevMode = true;
-                unlocked = [0,1,2,3,4,5,6,7,8,9]; 
+                unlocked = [0,1,2,3,4]; 
                 renderSelectButtons();
                 document.getElementById('dev-indicator').style.display = 'block';
-                alert("🔰 DEV MODE ON 🔰\n무적, 전체해금, 랭킹저장 안됨");
+                alert("🔰 DEV MODE ON 🔰\n무적, 전체해금");
             }
         });
 
+        // ★★★ 해금 조건별 버튼 렌더링 ★★★
         function renderSelectButtons() {
             const c = document.getElementById('select-container'); c.innerHTML = "";
             
             for(let i=0; i<PLANES.length; i++) {
                 const p = PLANES[i];
                 const btn = document.createElement('div'); 
-                btn.className = 'plane-btn' + (i===selectedIdx ? ' selected' : '') + (unlocked.includes(i) ? '' : ' locked');
+                const isUnlocked = unlocked.includes(i);
+                
+                btn.className = 'plane-btn' + (i===selectedIdx ? ' selected' : '') + (isUnlocked ? '' : ' locked');
                 btn.style.borderColor = p.color;
                 
                 const cvs = document.createElement('canvas'); cvs.width = 40; cvs.height = 40; const ctx = cvs.getContext('2d');
-                const matrix = SPRITES.planes[i]; const pixelSize = 4;
-                const w = matrix[0].length * pixelSize; const h = matrix.length * pixelSize;
-                const offX = (40 - w) / 2; const offY = (40 - h) / 2;
+                const matrix = SPRITES.planes[i]; 
                 
-                for(let r=0; r<matrix.length; r++) {
-                    for(let c=0; c<matrix[r].length; c++) { 
-                        const v = matrix[r][c]; 
-                        if(v) { ctx.fillStyle = v===1 ? p.color : v===2 ? p.sub : p.shade; ctx.fillRect(offX + c*pixelSize, offY + r*pixelSize, pixelSize, pixelSize); } 
+                if(matrix) {
+                    const pixelSize = 4;
+                    const w = matrix[0].length * pixelSize; const h = matrix.length * pixelSize;
+                    const offX = (40 - w) / 2; const offY = (40 - h) / 2;
+                    for(let r=0; r<matrix.length; r++) {
+                        for(let c=0; c<matrix[r].length; c++) { 
+                            const v = matrix[r][c]; 
+                            if(v) { ctx.fillStyle = v===1 ? p.color : v===2 ? p.sub : p.shade; ctx.fillRect(offX + c*pixelSize, offY + r*pixelSize, pixelSize, pixelSize); } 
+                        }
                     }
                 }
+                
                 btn.appendChild(cvs);
-                if(!unlocked.includes(i)) { btn.innerHTML = "<span style='font-size:20px'>🔒</span>"; }
-                btn.onclick = () => { if(!unlocked.includes(i)) { alert(`해금: ${p.req.toLocaleString()}점`); return; } selectedIdx = i; renderSelectButtons(); };
+                if(!isUnlocked) { btn.innerHTML = "<span style='font-size:20px'>🔒</span>"; }
+                
+                btn.onclick = () => { 
+                    if(!isUnlocked) { 
+                        let msg = "해금 조건 미달";
+                        if(p.unlockType === 'score') msg = `점수 ${p.req.toLocaleString()}점 달성 필요`;
+                        else if(p.unlockType === 'stage') msg = `${p.req} 스테이지 클리어 필요`;
+                        else if(p.unlockType === 'locked') msg = "준비중입니다 (COMING SOON)";
+                        alert(msg); 
+                        return; 
+                    } 
+                    selectedIdx = i; renderSelectButtons(); 
+                };
                 c.appendChild(btn);
             }
         }
 
         window.onload = () => {
-            initFirebase(); try { const s = JSON.parse(localStorage.getItem('pixelShooterUnlocks')); if(s) unlocked = s; } catch(e){} renderSelectButtons();
+            initFirebase(); 
+            try { 
+                const s = JSON.parse(localStorage.getItem(STORAGE_KEY)); 
+                if(s) {
+                    unlocked = s.filter(idx => idx < PLANES.length);
+                    if(unlocked.length === 0) unlocked = [0];
+                } else {
+                    unlocked = [0]; // 초기화: 0번 기체만 해금
+                }
+            } catch(e){ unlocked = [0]; } 
+            renderSelectButtons();
             
             document.getElementById('startBtn').onclick = () => { 
                 currentUsername = document.getElementById('username').value.trim() || "Player"; 
@@ -489,13 +525,16 @@
 
         function startGame() {
             isRunning = true; isPaused = false; score = 0; stage = 1; coins = 0;
+            
             const pData = PLANES[selectedIdx]; const sMap = SPRITE_MAP[`plane_${selectedIdx}`];
             playerBaseSpeed = pData.speed;
+            
             player = { 
                 ...player, x: 180, y: 450, w: sMap.w, h: sMap.h, 
                 speed: pData.speed, color: pData.color, sub: pData.sub, shade: pData.shade, 
                 power: 1, invincible: 0, drones: [], bType: `b_${pData.bullet}`, bSpeed: pData.bSpeed, 
-                hp: 3, maxHp: 3, shield: false,
+                hp: pData.hp, maxHp: pData.hp,
+                shield: false,
                 timers: { power: 0, speed: 0, shield: 0, fire: 0 }
             };
             
@@ -549,8 +588,9 @@
                 d.x += (tx - d.x) * 0.2; d.y += (ty - d.y) * 0.2;
             }
 
+            const pRate = PLANES[selectedIdx].rate || 90;
             const isRapid = now < player.timers.fire;
-            const fireInterval = isRapid ? 72 : 90;
+            const fireInterval = isRapid ? pRate * 0.7 : pRate; 
 
             if(now - lastShotTime > fireInterval) {
                 const cx = player.x + (player.w/2); const sMap = SPRITE_MAP[player.bType]; const bw = sMap.w;
@@ -608,6 +648,7 @@
                 if(!b.active) continue; 
                 b.x += (b.vx || 0); 
                 b.y += b.vy; 
+                
                 if(b.y < -20 || b.x < -20 || b.x > GAME_WIDTH+20) b.active = false; 
             }
 
@@ -630,21 +671,14 @@
                         for(let i=0; i<5; i++) spawnBossBullet(bx, by, (Math.random()-0.5)*10, Math.random()*5+5);
                     }
                     else if(stage === 5) { 
-                        // ★★★ 5단계 보스 리워크 (4발 정밀 + 3발 확산) ★★★
                         const a = Math.atan2(player.y-by, (player.x+player.w/2)-bx); 
-                        const bSpeed = 11; // 탄속 11로 조정
-
-                        // 1. 정밀 조준 4발 (좁은 부채꼴)
+                        const bSpeed = 11; 
                         spawnBossBullet(bx, by, Math.cos(a-0.15)*bSpeed, Math.sin(a-0.15)*bSpeed, 'sniper');
                         spawnBossBullet(bx, by, Math.cos(a-0.05)*bSpeed, Math.sin(a-0.05)*bSpeed, 'sniper');
                         spawnBossBullet(bx, by, Math.cos(a+0.05)*bSpeed, Math.sin(a+0.05)*bSpeed, 'sniper');
                         spawnBossBullet(bx, by, Math.cos(a+0.15)*bSpeed, Math.sin(a+0.15)*bSpeed, 'sniper');
-
-                        // 2. 흩뿌리기 3발 (랜덤 확산)
                         for(let i=0; i<3; i++) {
-                            // 플레이어 방향 기준 좌우 1라디안(약 60도) 범위 내 랜덤
                             const randA = a + (Math.random() - 0.5) * 1.0;
-                            // 속도도 약간 랜덤하게 하여 흩뿌리는 느낌 강화
                             const randS = bSpeed * (0.8 + Math.random() * 0.4);
                             spawnBossBullet(bx, by, Math.cos(randA)*randS, Math.sin(randA)*randS, 'sniper');
                         }
@@ -693,6 +727,8 @@
                 if(!b.active) continue; 
                 b.x += b.vx; b.y += b.vy; 
                 if(b.y>GAME_HEIGHT || b.y<0 || b.x<0 || b.x>GAME_WIDTH) b.active = false; 
+                
+                if(Math.abs(b.y - player.y) > 50) continue; 
                 if(checkColl(player, {x: b.x-5, y: b.y-5, w: 10, h: 10})) hitPlayer(); 
             }
 
@@ -705,13 +741,17 @@
                 
                 for(let j=0; j<POOLS.bullets.length; j++) {
                     const b = POOLS.bullets[j];
-                    if(b.active && checkColl(b, e)) {
+                    if(!b.active) continue;
+
+                    if(Math.abs(b.y - e.y) > 50) continue; 
+
+                    if(checkColl(b, e)) {
                         e.hp--; e.hit = 5; b.active = false;
                         if(e.hp <= 0) { 
                             e.active = false; 
                             score += 300; 
                             updateUI(); 
-                            createParticle(e.x, e.y, 5); 
+                            createParticle(e.x, e.y, isMobile ? 3 : 5); 
                             playSound('explosion'); if(Math.random() < 0.1) dropItem(e.x, e.y); 
                             break; 
                         }
@@ -813,10 +853,17 @@
             } 
         }
         function spawnBossBullet(x, y, vx, vy, type) { const b = getFromPool(POOLS.bossBullets); if(b) { b.active = true; b.x = x; b.y = y; b.vx = vx; b.vy = vy; b.type = type; } }
+        
         function createParticle(x, y, count=10) { 
             for(let i=0; i<count; i++) { 
                 const p = getFromPool(POOLS.particles); 
-                if(p) { p.active = true; p.x = x+20; p.y = y+20; p.vx = (Math.random()-0.5)*10; p.vy = (Math.random()-0.5)*10; p.life = 20; p.color = `hsl(${Math.random()*60},100%,50%)`; p.size = Math.random()*4+2; } 
+                if(p) { 
+                    p.active = true; p.x = x+20; p.y = y+20; 
+                    p.vx = (Math.random()-0.5)*10; p.vy = (Math.random()-0.5)*10; 
+                    p.life = 20; 
+                    p.color = PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)]; 
+                    p.size = Math.random()*4+2; 
+                } 
             } 
         }
         function dropItem(x, y, t) { 
@@ -844,7 +891,10 @@
             if(t==='O') { if(player.drones.length<2) player.drones.push({x:player.x, y:player.y}); else score+=1000; }
             updateUI(); 
         }
-        function checkColl(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
+        
+        function checkColl(r1, r2) { 
+            return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; 
+        }
         
         function hitPlayer() {
             if(isDevMode) return; 
@@ -862,14 +912,39 @@
                 createParticle(player.x, player.y, 20); 
 
                 if(player.hp <= 0) { 
-                    isRunning = false; saveScore(currentUsername, score); checkUnlock(); try { stopBgm(); playBgm('end'); } catch(e){}
+                    isRunning = false; saveScore(currentUsername, score); 
+                    // ★★★ 게임오버 시 해금 체크 ★★★
+                    checkUnlock(); 
+                    try { stopBgm(); playBgm('end'); } catch(e){}
                     document.body.classList.remove('game-running'); 
                     document.getElementById('final-score').innerText = "SCORE: " + score; document.getElementById('game-over-screen').style.display = 'flex';
                     document.getElementById('pause-btn-panel').style.display = 'none'; 
                 }
             }
         }
-        function checkUnlock() { let newUnlock = false; PLANES.forEach((p, i) => { if(!unlocked.includes(i) && score >= p.req) { unlocked.push(i); newUnlock = true; } }); if(newUnlock) { localStorage.setItem('pixelShooterUnlocks', JSON.stringify(unlocked)); document.getElementById('unlock-msg').innerText = "🎉 신규 기체 해금!"; } }
+
+        // ★★★ 새로운 해금 로직 적용 ★★★
+        function checkUnlock() { 
+            let newUnlock = false; 
+            for(let i=0; i<PLANES.length; i++) {
+                const p = PLANES[i];
+                if(unlocked.includes(i)) continue; // 이미 해금됨
+
+                let unlockedNow = false;
+                if(p.unlockType === 'score' && score >= p.req) unlockedNow = true;
+                if(p.unlockType === 'stage' && stage > p.req) unlockedNow = true;
+                // 'locked' 타입은 여기서 처리 안 함 (영구 잠금)
+
+                if(unlockedNow) {
+                    unlocked.push(i);
+                    newUnlock = true;
+                }
+            }
+            if(newUnlock) { 
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(unlocked)); 
+                document.getElementById('unlock-msg').innerText = "🎉 신규 기체 해금!"; 
+            } 
+        }
 
         let audioCtx, bgmOscs=[], bgmPlaying=false;
         const MELODIES = { intro: [{f:330,d:0.2}, {f:330,d:0.2}, {f:261,d:0.4}], game: [{f:440,d:0.1},{f:0,d:0.1},{f:523,d:0.1},{f:587,d:0.1}], end: [{f:523,d:0.2},{f:440,d:0.4}] };
